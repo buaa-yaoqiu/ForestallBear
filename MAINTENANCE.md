@@ -80,16 +80,31 @@ cd D:\Coding\ForestallBear
 
 这个参数只允许发布成功读取的部分，**不会**对未核实条目编造前置形态，也不自动重试被拦截的页面。
 
-## 3. 浏览器手动读取进化链，再导入（不落地文件）
+## 3. 被拦截时：用浏览器读取完整资料，再导入（不落地文件）
 
 当脚本无法访问 WIKI、但你能正常打开页面时：
 
-1. 用浏览器打开目标精灵页面，点击“进化链”，确认链条显示正常。
-2. 打开开发者工具 Console，执行下面代码。代码只读取进化链栏并将 JSON 复制到剪贴板，不访问账号信息、不发送网络请求、不保存文件。若浏览器阻止粘贴，请遵循浏览器提示自行处理；不要关闭安全设置。
+自动模式出现 HTTP 567、403、429 或“请求已被拦截”时，不要反复重试。可改用下面流程；它利用你已经正常打开的页面，不尝试绕过站点限制。
+
+1. 用浏览器打开目标精灵页面，点击“进化链”，确认精灵资料与链条显示正常。
+2. 打开开发者工具 Console，执行下面代码。代码只读取当前页面已展示的六维、属性、特性、头像地址和进化链，并将 JSON 复制到剪贴板；不读取账号信息、不额外发起网络请求、不保存文件。若浏览器阻止粘贴，请遵循浏览器提示自行处理，不要关闭安全设置。
 
 ```javascript
 copy(JSON.stringify([{
   url: location.href,
+  pet: (() => {
+    const values = Object.fromEntries([...document.querySelectorAll('.roco-stat')].map(s => [
+      s.querySelector('.roco-stat-name')?.textContent.trim(),
+      Number(s.querySelector('.roco-stat-val')?.dataset.val || s.querySelector('.roco-stat-val')?.textContent)
+    ]));
+    return {
+      name: decodeURIComponent(location.pathname.split('/').pop()).replaceAll('_', ' '),
+      stats: ['生命', '攻击', '魔攻', '物防', '魔防', '速度'].map(k => values[k]),
+      types: [...document.querySelectorAll('.roco-ident-types .roco-type')].map(x => x.dataset.type || x.textContent.trim()),
+      trait: document.querySelector('.roco-feature-name')?.textContent.trim(),
+      image: document.querySelector('.roco-art[data-view="pet"] img')?.currentSrc
+    };
+  })(),
   chains: [...document.querySelectorAll('.roco-evo-timeline')].map(t => ({
     nodes: [...t.querySelectorAll('.roco-evo-node')].map(n => ({
       name: n.querySelector('.roco-evo-name-main')?.textContent.trim(),
@@ -112,14 +127,14 @@ copy(JSON.stringify([{
 ./maintain-data.ps1 import-wiki --publish
 ```
 
-也可以直接从剪贴板传入，不创建数据文件：
+也可以直接从剪贴板通过包装脚本传入，不创建数据文件：
 
 ```powershell
-Get-Clipboard -Raw | py -3 maintain-data.py import-wiki
-Get-Clipboard -Raw | py -3 maintain-data.py import-wiki --publish
+Get-Clipboard -Raw | ./maintain-data.ps1 import-wiki
+Get-Clipboard -Raw | ./maintain-data.ps1 import-wiki --publish
 ```
 
-Chrome／Edge 开发者工具提供 `copy()`；这不是普通网页脚本 API。没有读到 `.roco-evo-timeline` 时不要提交空数组，先确认位于正确精灵页面。手动导入同样保留未读取的旧条目。
+Chrome／Edge 开发者工具提供 `copy()`；这不是普通网页脚本 API。手动导入会严格校验六维、属性、特性、WIKI 页面域名和头像素材域名；任一字段缺失就停止，不用空值覆盖远程资料。没有进化链的最低阶精灵允许 `chains` 为空，精灵资料仍可导入。发布头像时脚本只将 WIKI 图片读入内存后直接上传 LFS。
 
 ## 4. 一次完成精灵与进化链更新
 

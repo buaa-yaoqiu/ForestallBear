@@ -328,6 +328,26 @@ def wiki_pet(doc, name, url):
             'trait': trait.text(), 'image': image, 'wikiSource': url}
 
 
+def imported_pet(pet, page_url):
+    if not isinstance(pet, dict):
+        raise RemoteError('浏览器精灵资料格式不正确')
+    name, stats, types, trait, image = (pet.get(k) for k in ['name', 'stats', 'types', 'trait', 'image'])
+    if not isinstance(name, str) or re.search(r'[<>\x00-\x1f]', name):
+        raise RemoteError('浏览器精灵名称无效')
+    if not isinstance(stats, list) or len(stats) != 6 or any(type(n) not in [int, float] or not 0 < n < 10000 for n in stats):
+        raise RemoteError('浏览器六维种族值不完整：' + name)
+    if not isinstance(types, list) or not types or not set(types).issubset(TYPES):
+        raise RemoteError('浏览器属性字段无效：' + name)
+    if not isinstance(trait, str) or not trait or re.search(r'[<>\x00-\x1f]', trait):
+        raise RemoteError('浏览器特性字段无效：' + name)
+    if urllib.parse.urlparse(image or '').hostname != 'patchwiki.biligame.com':
+        raise RemoteError('浏览器头像不在 WIKI 素材域名：' + name)
+    if urllib.parse.urlparse(page_url or '').hostname != 'wiki.biligame.com':
+        raise RemoteError('浏览器页面不是指定 WIKI：' + name)
+    return {'name': name, 'stats': stats, 'types': types, 'trait': trait,
+            'image': image, 'wikiSource': page_url}
+
+
 def merge_catalog(old, incoming, selected):
     result = copy.deepcopy(old)
     slots = {p['name']: i for i, p in enumerate(result['pets'])}
@@ -393,16 +413,18 @@ def main():
         return 0
     additions, updates, evo_changes, warnings = [], [], [], []
     changes = {}
-    pages = []
+    pages, incoming = [], []
     if args.mode == 'import-wiki':
-        print('请粘贴浏览器进化链 JSON，完成后发送 EOF（Windows: Enter、Ctrl+Z、Enter）：')
+        print('请粘贴浏览器精灵资料／进化链 JSON，完成后发送 EOF（Windows: Enter、Ctrl+Z、Enter）：')
         pages = json.load(sys.stdin)
         if isinstance(pages, dict):
             pages = [pages]
         if not isinstance(pages, list) or not all(isinstance(p, dict) and isinstance(p.get('chains'), list) for p in pages):
             raise RemoteError('进化链 JSON 格式不正确')
+        incoming = [imported_pet(page['pet'], page.get('url')) for page in pages if page.get('pet')]
+        if not incoming and not any(page['chains'] for page in pages):
+            raise RemoteError('没有可导入的精灵资料或进化链')
     elif args.mode in ['pets', 'evolutions', 'all']:
-        incoming = []
         try:
             index = wiki_page('https://wiki.biligame.com/nrc/' + urllib.parse.quote('精灵图鉴'))
             links = wiki_catalog(index, old['pets'])
@@ -444,6 +466,7 @@ def main():
                     break
         except RemoteError as error:
             warnings.append(str(error))
+    if incoming:
         catalog, additions, updates = merge_catalog(old, incoming, set(args.name))
         for pet in catalog['pets']:
             previous = next((p for p in old['pets'] if p['name'] == pet['name']), None)
@@ -485,6 +508,7 @@ def main():
 
 
 if __name__ == '__main__':
+    sys.stdin.reconfigure(encoding='utf-8-sig')
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
     try:
