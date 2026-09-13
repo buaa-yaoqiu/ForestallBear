@@ -2,8 +2,7 @@
   'use strict';
   const keys = ['hp','pa','ma','pd','md','sp'];
   const labels = ['生命','物攻','魔攻','物防','魔防','速度'];
-  const pets = root.BEAR_PETS || (typeof require==='function' ? require('./data/pets.json').pets : []);
-  if(!pets.length)throw Error('Pet data missing');
+  const pets = root.BEAR_PETS || [];
   // Row = increased stat; columns = decreased stats in keys order, excluding self.
   const natureRows = [
     ['沉默','平和','忧郁','粗心','踏实'],['逞强','固执','大胆','调皮','勇敢'],

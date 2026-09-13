@@ -1,8 +1,8 @@
 /* Local-only UI. No runtime network requests or remote dependencies. */
-(() => {
+globalThis.startBearApp=() => {
   'use strict';
   const E=BearEngine,$=id=>document.getElementById(id),assets=globalThis.BEAR_ASSETS||{};
-  const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,survive:false,currentHP:null});
+  const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},morphPath:[],freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,survive:false,currentHP:null});
   let state=initial(),timer;
   const num=(n,max=100,min=0)=>E.bounded(n,min,max);
   const natureOf=v=>typeof v.nature==='object'?v.nature:E.natures[v.nature]||E.natures['无修正'];
@@ -17,20 +17,24 @@
       out[side]={pet:v.pet,nature:{up:n.up,down:n.down},ivs:v.ivs.map(E.normalizeIV)};
     }
     out.freeze=Math.trunc(num(s.freeze,20));out.marks=Math.trunc(num(s.marks,99));
+    let previous=E.pets[out.def.pet].name;
+    for(const name of s.morphPath||[]){if(!globalThis.BEAR_EVOLUTIONS[previous]?.previous.includes(name)||!E.pets.some(p=>p.name===name))throw Error('萌化路径与进化链不符');out.morphPath.push(name);previous=name;}
     out.reduction=num(s.reduction);for(const k of ['mainMult','starMult'])out[k]=E.bounded(s[k],0,10,1);
     for(const k of ['atkLevel','defLevel','powerLevel'])out[k]=Math.trunc(E.bounded(s[k],-99,99,0));
     out.survive=s.survive===true;out.currentHP=s.currentHP===null?null:Math.round(num(s.currentHP,99999));return out;
   }
-  function stats(side){const v=state[side],p=E.pets[v.pet];return p.stats.map((sv,i)=>E.realStat(sv,v.ivs[i],v.nature,i));}
+  function statPet(side){return side==='def'&&state.morphPath.length?E.pets.find(p=>p.name===state.morphPath.at(-1)):E.pets[state[side].pet];}
+  function stats(side){const v=state[side],p=statPet(side);return p.stats.map((sv,i)=>E.realStat(sv,v.ivs[i],v.nature,i));}
   function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(timer);timer=setTimeout(()=>$('toast').classList.remove('visible'),2600);}
   function card(side){
-    const v=state[side],p=E.pets[v.pet],atk=side==='atk',title=atk?'攻击方':'防御方';
-    $(atk?'attacker':'defender').innerHTML=`<div class="card-heading"><span class="side-label">${atk?'ATTACKER / 攻击方':'DEFENDER / 防御方'}</span><small>${atk?'固定精灵':'${E.pets.length} 个精灵／形态'}</small></div><select id="${side}-pet" class="pet-select" aria-label="${title}精灵">${E.pets.map((p,i)=>!atk||i===0?`<option value="${i}" ${i===v.pet?'selected':''}>${p.name}</option>`:'').join('')}</select><div class="pet-banner"><img src="${assets[p.name]||''}" alt="${p.name}"><div class="pet-meta"><div class="type-badges">${p.types.map(t=>`<span>${t}系</span>`).join('')}</div>${atk?'':`<div class="trait">特性 · <b>${p.trait}</b></div>`}<div class="trait">种族总和 <b>${p.stats.reduce((a,b)=>a+b,0)}</b></div></div></div><table class="stats-table"><thead><tr><th>能力</th><th>种族</th><th>个体</th><th class="nature-col">增益</th><th class="nature-col">减益</th><th>面板</th></tr></thead><tbody>${E.keys.map((k,i)=>`<tr><td><span class="stat-label">${E.labels[i]}</span></td><td>${p.stats[i]}</td><td><div class="iv-stepper"><output id="${side}-iv-${i}" aria-label="${title}${E.labels[i]}个体值">${v.ivs[i]}</output><div><button id="${side}-iv-up-${i}" aria-label="增加${title}${E.labels[i]}个体值">▴</button><button id="${side}-iv-down-${i}" aria-label="减少${title}${E.labels[i]}个体值">▾</button></div></div></td><td class="nature-col"><button class="nature-choice up" id="${side}-nature-up-${i}" aria-label="${title}${E.labels[i]}性格增益" aria-pressed="false">↑</button></td><td class="nature-col"><button class="nature-choice down" id="${side}-nature-down-${i}" aria-label="${title}${E.labels[i]}性格减益" aria-pressed="false">↓</button></td><td><output id="${side}-actual-${i}" class="actual" aria-label="${title}${E.labels[i]}实际面板"></output></td></tr>`).join('')}</tbody></table><div class="stat-foot"><span>个体 0 / 42 / 48 / 54 / 60 · 面板自动计算</span></div>${atk?'<section class="bear-trait"><div class="trait-top"><span class="trait-symbol">✦</span><div><small>精灵特性</small><h3>月牙雪糕</h3></div><span class="trait-auto">自动生效</span></div><p>使用攻击技能时，目标每有 1 层冻结，在攻击前使其获得 1 层星陨印记。</p><div class="trait-chain"><span>❄ 冻结</span><b>→</b><span>✧ 星陨印记</span></div></section>':'<div class="hp-control"><label for="current-hp">当前生命</label><input id="current-hp" type="number" min="0" step="1"><button id="full-hp">满血</button></div>'}`;
+    const v=state[side],p=E.pets[v.pet],shown=statPet(side),atk=side==='atk',title=atk?'攻击方':'防御方';
+    $(atk?'attacker':'defender').innerHTML=`<div class="card-heading"><span class="side-label">${atk?'ATTACKER / 攻击方':'DEFENDER / 防御方'}</span><small>${atk?'固定精灵':E.pets.length+' 个精灵／形态'}</small></div><select id="${side}-pet" class="pet-select" aria-label="${title}精灵">${E.pets.map((p,i)=>!atk||i===0?`<option value="${i}" ${i===v.pet?'selected':''}>${p.name}</option>`:'').join('')}</select><div class="pet-banner"><img data-pet-portrait="${shown.name}" alt="${p.name}"><div class="pet-meta"><div class="type-badges">${p.types.map(t=>`<span>${t}系</span>`).join('')}</div>${atk?'':`<div class="trait">特性 · <b>${p.trait}</b></div>`}<div class="trait">种族总和 <b>${shown.stats.reduce((a,b)=>a+b,0)}</b></div></div></div><table class="stats-table"><thead><tr><th>能力</th><th>种族</th><th>个体</th><th class="nature-col">增益</th><th class="nature-col">减益</th><th>面板</th></tr></thead><tbody>${E.keys.map((k,i)=>`<tr><td><span class="stat-label">${E.labels[i]}</span></td><td>${shown.stats[i]}</td><td><div class="iv-stepper"><output id="${side}-iv-${i}" aria-label="${title}${E.labels[i]}个体值">${v.ivs[i]}</output><div><button id="${side}-iv-up-${i}" aria-label="增加${title}${E.labels[i]}个体值">▴</button><button id="${side}-iv-down-${i}" aria-label="减少${title}${E.labels[i]}个体值">▾</button></div></div></td><td class="nature-col"><button class="nature-choice up" id="${side}-nature-up-${i}" aria-label="${title}${E.labels[i]}性格增益" aria-pressed="false">↑</button></td><td class="nature-col"><button class="nature-choice down" id="${side}-nature-down-${i}" aria-label="${title}${E.labels[i]}性格减益" aria-pressed="false">↓</button></td><td><output id="${side}-actual-${i}" class="actual" aria-label="${title}${E.labels[i]}实际面板"></output></td></tr>`).join('')}</tbody></table><div class="stat-foot"><span>个体 0 / 42 / 48 / 54 / 60 · 面板自动计算</span></div>${atk?'<section class="bear-trait"><div class="trait-top"><span class="trait-symbol">✦</span><div><small>精灵特性</small><h3>月牙雪糕</h3></div><span class="trait-auto">自动生效</span></div><p>使用攻击技能时，目标每有 1 层冻结，在攻击前使其获得 1 层星陨印记。</p><div class="trait-chain"><span>❄ 冻结</span><b>→</b><span>✧ 星陨印记</span></div></section>':'<div class="hp-control"><label for="current-hp">当前生命</label><input id="current-hp" type="number" min="0" step="1"><button id="full-hp">满血</button></div>'}`;
+    document.querySelectorAll('[data-pet-portrait]').forEach(img=>globalThis.loadPetPortrait(img,img.dataset.petPortrait));
     if(!atk){
       $('def-pet').insertAdjacentHTML('beforebegin','<input id="pet-search" type="search" placeholder="搜索名称、属性或特性" aria-label="搜索目标精灵"><p id="pet-search-count" class="field-note"></p>');
       $('pet-search').oninput=e=>{const q=e.target.value.trim().toLowerCase();let count=0;for(const option of $('def-pet').options){const p=E.pets[Number(option.value)];const show=[p.name,p.trait,...p.types].join(' ').toLowerCase().includes(q);option.hidden=!show;if(show)count++;} $('pet-search-count').textContent=q?'匹配 '+count+' 个精灵／形态':'';};
     }
-    $(`${side}-pet`).addEventListener('change',e=>{state[side]={...initial()[side],pet:Number(e.target.value)};if(!atk)state.currentHP=null;card(side);render();});
+    $(`${side}-pet`).addEventListener('change',e=>{state[side]={...initial()[side],pet:Number(e.target.value)};if(!atk){state.currentHP=null;state.morphPath=[];}card(side);render();});
     for(const column of ['up','down'])for(let i=0;i<6;i++)$(`${side}-nature-${column}-${i}`).onclick=()=>{
       const n={...natureOf(v)},other=column==='up'?'down':'up';
       n[column]=n[column]===i?-1:i;if(n[column]>=0&&n[other]===i)n[other]=-1;
@@ -39,10 +43,15 @@
     E.keys.forEach((_,i)=>{
       for(const [direction,step] of [['up',1],['down',-1]])$(`${side}-iv-${direction}-${i}`).onclick=()=>{
         const index=E.ivSteps.indexOf(v.ivs[i])+step;
-        v.ivs[i]=E.ivSteps[index<0?E.ivSteps.length-1:Math.min(E.ivSteps.length-1,index)];render();
+        v.ivs[i]=E.ivSteps[(index+E.ivSteps.length)%E.ivSteps.length];render();
       };
     });
     if(!atk){
+      const entry=globalThis.BEAR_EVOLUTIONS[shown.name],previous=(entry?.previous||[]).filter(name=>E.pets.some(p=>p.name===name));
+      $('def-pet').insertAdjacentHTML('afterend',`<div class="morph-controls"><button id="morph" class="morph-button" ${previous.length?'':'disabled'}>♥ 萌化</button><button id="cure" class="cure-button" ${state.morphPath.length?'':'disabled'}>♨ 除厄</button></div><p class="field-note morph-note">${state.morphPath.length?'种族值：'+shown.name+' · 特性保留：'+p.trait:previous.length?'萌化后使用上一阶种族值，保留当前属性与特性':entry?.verified?'已处于该进化链最低阶':'进化链暂未核实，暂不可萌化'}</p>${previous.length>1?`<select id="morph-target" aria-label="萌化分支">${previous.map(name=>`<option>${name}</option>`).join('')}</select>`:''}`);
+      const changeMorph=path=>{const before=config();state.morphPath=path;const max=stats('def')[0];if(state.currentHP!==null)state.currentHP=Math.min(max,Math.ceil(before.currentHP*max/before.maxHP));card('def');render();};
+      $('morph').onclick=()=>{if(previous.length)changeMorph([...state.morphPath,$('morph-target')?.value||previous[0]]);};
+      $('cure').onclick=()=>changeMorph([]);
       $('full-hp').insertAdjacentHTML('beforebegin','<output id="current-hp-percent" aria-label="当前生命百分比"></output>');
       $('full-hp').parentElement.insertAdjacentHTML('afterend','<div class="hp-slider-row"><button id="hp-minus" aria-label="当前生命减少1">−</button><input id="current-hp-range" aria-label="当前生命拖条" type="range" min="0" step="1"><button id="hp-plus" aria-label="当前生命增加1">＋</button></div>');
       bindNumber('current-hp',x=>{state.currentHP=Math.min(stats('def')[0],Math.round(x));},0,99999);
@@ -62,7 +71,7 @@
   function render(force=false){
     for(const side of ['atk','def'])stats(side).forEach((x,i)=>{
       $(`${side}-actual-${i}`).textContent=x;$(`${side}-iv-${i}`).textContent=state[side].ivs[i];
-      $(`${side}-iv-up-${i}`).disabled=state[side].ivs[i]===60;$(`${side}-iv-down-${i}`).disabled=false;
+      $(`${side}-iv-up-${i}`).disabled=false;$(`${side}-iv-down-${i}`).disabled=false;
       const nature=natureOf(state[side]),label=$(`${side}-actual-${i}`).closest('tr').querySelector('.stat-label');
       label.className='stat-label'+(nature.up===i?' nature-up':nature.down===i?' nature-down':'');
       label.textContent=E.labels[i];
@@ -101,7 +110,7 @@
       const el=$(`hp-${key}`);el.style.width=r.segments[key]/c.maxHP*100+'%';el.title=`${label} ${hpText(r.segments[key])} HP`;
     }
     $('hp-bar').setAttribute('aria-label',`冻结 ${hpText(r.segments.frozen)}，剩余可用生命 ${hpText(r.segments.red)}，星陨 ${hpText(r.segments.star)}，先发 ${hpText(r.segments.main)}，已掉 ${hpText(r.segments.empty)} HP`);
-    $('remaining').textContent=kill?'预计击败':`预计剩余 ${r.remaining} HP`;
+    $('remaining').textContent=kill?'预计击败 · 剩余 0%':`预计剩余 ${r.remaining} HP（${Math.ceil(r.remaining*100/c.maxHP)}%）`;
     $('freeze-hp-note').textContent=`冻结生命线 ${hpText(r.frozenHP)} HP（${state.freeze*5}%） · ${r.alreadyFrozen?'当前生命已在线内':`攻击后生命 ${r.postDamage} HP`}`;
     $('needed').textContent=!alive?'—':minimum===null?'—':minimum;
     $('needed-unit').textContent=minimum===null?'本条件下无法击败':'层';
@@ -111,8 +120,8 @@
     $('formula').innerHTML=`<div class="formula-grid"><div><b>① 能力等级倍率</b>(1 + ${Math.max(state.atkLevel,0)/10} 我方物攻提升 + ${Math.max(-state.defLevel,0)/10} 敌方物防降低)<br>÷ (1 + ${Math.max(-state.atkLevel,0)/10} 我方物攻降低 + ${Math.max(state.defLevel,0)/10} 敌方物防提升)<br>= ${r.abilityNumerator} / ${r.abilityDenominator} ≈ ${Number(r.ability.toFixed(6))}</div><div><b>② 先发制人 · 普通系物理伤害</b>威力 = max(0, 55 × 1 应对倍率 + ${r.powerBonus}) = ${r.skillPower}<br>⌊ (${c.attack} ÷ ${c.defense}) × 37/41 × ${r.skillPower} × (${r.abilityNumerator}/${r.abilityDenominator})<br>× 1 本系 × ${r.mainEffect} 克制 × ${c.mainMult} 其他影响 × ${(100-c.reduction)/100} 减伤剩余 × 1 其他免伤 ⌋ = ${r.main} HP</div><div><b>③ 星陨印记 · 引爆伤害</b>n = min(99, ${state.freeze} 冻结 + ${state.marks} 已有) = ${r.layers}；印记威力 = ${r.power}<br>结算威力 = max(0, ${r.power} + ${r.powerBonus})${r.layers===0?"（零层不触发）":""} = ${r.starPower}<br>⌊ (${c.attack} ÷ ${c.defense}) × 37/41 × ${r.starPower} × (${r.abilityNumerator}/${r.abilityDenominator}) 能力等级 × ${r.starEffect} 克制 × ${c.starMult} 其他影响 × ${(100-c.reduction)/100} 减伤剩余 × 1 其他免伤 ⌋ = ${r.star} HP<br>不乘本系加成；零层印记不触发。</div><div><b>④ 冻结生命线与斩杀合计</b>⌊ ${c.maxHP} × ${state.freeze} / 20 ⌋ = ${r.frozenHP} HP<br>攻击后生命 ≤ 冻结生命线 → 击败<br>斩杀线 = ${r.main} 先发 + ${r.star} 星陨 + ${r.frozenHP} 冻结 = ${r.executionLine} HP。</div></div>`;
   }
   function mount(){card('atk');card('def');render(true);}
-  try{const saved=localStorage.getItem('crescent-bear-v2')||localStorage.getItem('crescent-bear-v1');if(saved){const parsed=JSON.parse(saved);state=validate(parsed);if(parsed.version===1)toast('旧配置已适配五档个体与 20 层冻结，手动面板已移除');}}catch{toast('未能读取本地配置，已使用默认值');}
-  $('hero-bear').src=assets['月牙雪熊']||'';
+  try{localStorage.removeItem('crescent-bear-v2');localStorage.removeItem('crescent-bear-v1');}catch{}
+  globalThis.loadPetPortrait($('hero-bear'),'月牙雪熊');
   $('brand-logo').src=assets.logo;$('site-icon').href=assets.logo;
   mount();
   for(const key of ['atkLevel','defLevel','powerLevel']){
@@ -127,8 +136,7 @@
   $('forecast').onclick=e=>{const b=e.target.closest('[data-freeze]');if(b){state.freeze=Number(b.dataset.freeze);render(true);}};
   $('survive').onchange=e=>{state.survive=e.target.checked;render();};
   $('reset').onclick=()=>{state=initial();mount();toast('已恢复默认测试配置；保存的配置未覆盖');};
-  $('save').onclick=()=>{try{localStorage.setItem('crescent-bear-v2',JSON.stringify(state));toast('配置已保存到当前浏览器');}catch{toast('浏览器不允许本地保存，请使用导出');}};
   $('export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='月牙雪熊-对战配置.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('配置已导出');};
   $('import').onclick=()=>$('import-file').click();
   $('import-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>50000)throw Error('配置文件过大');const next=validate(JSON.parse(await file.text()));state=next;mount();toast('配置已导入');}catch(err){toast('导入失败：'+err.message);}finally{e.target.value='';}};
-})();
+};

@@ -7,13 +7,13 @@
 </head>
 <body>
 <div class="ambient" aria-hidden="true"></div>
-<div class="shell">
-  <header class="topbar"><a class="brand" href="#"><img id="brand-logo" class="brand-logo" alt="先发拿下"> 月牙实验室 <span class="divider">/</span> <span class="muted">洛克王国世界</span></a><span class="offline"><i></i> 离线计算 · 全图鉴 0.7</span></header>
+<div class="shell"><section id="remote-loading"><p id="remote-status">正在连接远程图鉴…</p><button id="load-retry" hidden>重新加载</button></section><div id="app-content" hidden>
+  <header class="topbar"><a class="brand" href="#"><img id="brand-logo" class="brand-logo" alt="先发拿下"> 月牙实验室 <span class="divider">/</span> <span class="muted">洛克王国世界</span></a><span class="offline"><i></i> 联网图鉴 · 0.8</span></header>
   <section class="hero">
     <div><div class="eyebrow">CRESCENT BEAR / DAMAGE LAB</div><h1>这一击，<span>刚好落幕</span></h1><p>月牙雪熊 · 先发制人斩杀线计算器</p><div class="hero-tags"><span>普通系 · 55 威力</span><span>先手 +1</span><span>冻结 → 星陨</span></div></div>
     <div class="hero-art" aria-hidden="true"><div class="orbit"></div><span class="spark s1">✦</span><span class="spark s2">✧</span><img id="hero-bear" alt=""><span class="art-label">月牙雪熊 <small>NO.322</small></span></div>
   </section>
-  <div class="workspace-heading"><div><span class="eyebrow">01 / BATTLE SETUP</span><h2>配置对战</h2></div><div class="toolbar"><button id="save">保存配置</button><button id="export">导出</button><button id="import">导入</button><button id="reset" class="quiet">重置</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div>
+  <div class="workspace-heading"><div><span class="eyebrow">01 / BATTLE SETUP</span><h2>配置对战</h2></div><div class="toolbar"><button id="export">导出</button><button id="import">导入</button><button id="reset" class="quiet">重置</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div>
   <main class="layout">
     <div class="setup">
       <div class="duel"><section class="panel pet-card" id="attacker" aria-label="攻击方配置"></section><section class="panel pet-card defender" id="defender" aria-label="防御方配置"></section></div>
@@ -42,8 +42,8 @@
     </aside>
   </main>
   <section class="panel forecast"><div class="section-title"><div><span class="eyebrow">03 / FREEZE FORECAST</span></div><span class="muted small">点击层数即可应用</span></div><div id="forecast" class="forecast-grid"></div></section>
-  <details class="panel methodology"><summary>计算过程与数据来源 <span>查看当前公式、模型边界与版本</span></summary><div id="formula"></div><p>六维面板使用 lovepvp 的培养换算公式，适用于该站 PVP 计算口径，不模拟任意等级成长。个体限定 0、42、48、54、60 五档，实际面板自动计算且只读。星陨印记威力仍为 n² + 24n − 24；伤害按用户提供的新公式，乘面板攻防比、37/41 和加成后的印记威力，但不乘本系加成，分段向下取整；0 层不触发，不添加未经证实的随机伤害区间。星陨输入和冻结转化后的总层数均不超过 99 层。</p><p>冻结上限 20 层，每层冻结最大生命的 5%；剩余生命 ≤ 冻结生命线即死亡，最低冻结层数也按此条件计算。冻结血量 = floor(最大生命 × 层数 / 20)，按总冻结量一次向下取整；当前生命百分比 = ceil(当前生命 / 最大生命 × 100)。血条依次为冻结、剩余可用生命、星陨伤害、先发伤害、已掉生命；图中伤害段按可用生命裁切，冻结段不超过当前生命。02 斩杀线展示完整理论伤害与冻结血量之和，若当前已达冻结死亡线，则无需再攻击。以上冻结规则与个体档位按本次用户提供的规则修正。</p><p>取整争议（未实测）：用户推断血量百分比向上取整，若冻结血量也向上取整，可能出现显示 6% 生命却被 1 层冻结击败。当前采用冻结总量向下取整作为暂定规则，不能据此认定真实游戏内部也这样取整。<a href="https://wiki.biligame.com/nrc/雪怪" target="_blank" rel="noreferrer">WIKI 冻结说明</a>提到每层 5% 及“低于冻结比例”，没有说明取整与等号边界；本工具暂保留用户指定的 ≤ 判定，后续需实测验证。</p><p>冻结转化采用新版 WIKI 描述。本体和星陨均使用本次用户提供的能力等级公式。三个等级范围为 −99～+99，物攻／物防每层 10%，威力每层 10 点。先发制人应对倍率和本系均为 1；威力加成同样加入星陨印记威力，零层印记仍不触发。只处理应对防御减伤，其他免伤暂为 1，未来新增时分别乘算。负威力暂截为 0，不造成负伤害。测试精灵特性仅作资料展示，月牙雪糕之外的条件触发未自动模拟。</p><p>资料核对：2026-09-13 · <a href="https://lovepvp.top" target="_blank" rel="noreferrer">lovepvp 伤害计算器</a> · <a href="https://wiki.biligame.com/nrc/月牙雪熊" target="_blank" rel="noreferrer">月牙雪熊图鉴</a> · <a href="https://wiki.biligame.com/nrc/先发制人" target="_blank" rel="noreferrer">先发制人</a>。精灵图片来源 BWIKI（游戏素材版权归原权利人）；引用 WIKI 内容遵循 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans" target="_blank" rel="noreferrer">CC BY-NC-SA 4.0</a>，仅用于非商业学习与测试。</p></details>
-  <footer><span>☾ 月牙实验室 <span class="muted"> / 为下一次漂亮的收尾。</span></span><span>本地运行 · 无需登录 · 不上传配置</span></footer>
-</div><div id="toast" role="status"></div>
-<script src="assets.js"></script><script src="data/pets.js"></script><script src="engine.js"></script><script src="app.js"></script>
+  <details class="panel methodology"><summary>计算过程与数据来源 <span>查看当前公式、模型边界与版本</span></summary><div id="formula"></div><p>图鉴与头像从远程仓库按需加载，不保存在本地存储中。萌化每次退回已核实的上一阶种族值，保留原属性与特性；除厄恢复原状。未核实进化链会禁用萌化。</p><p>冻结血量按总量向下取整、生命≤冻结线判死；此取整与等号边界尚待实测。能力倍率与伤害计算按用户提供规则，特性暂仅展示。资料来源：<a href="https://lovepvp.top">lovepvp</a> 与 <a href="https://wiki.biligame.com/nrc">BWIKI</a>，WIKI内容遵循CC BY-NC-SA 4.0。</p></details>
+  <footer><span>☾ 月牙实验室 <span class="muted"> / 为下一次漂亮的收尾。</span></span><span>远程数据 · 按需加载 · 不持久缓存</span></footer>
+</div></div><div id="toast" role="status"></div>
+<script src="assets.js"></script><script src="engine.js"></script><script src="app.js"></script><script src="bootstrap.js"></script>
 </body></html>
