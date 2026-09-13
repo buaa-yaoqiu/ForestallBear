@@ -1,10 +1,14 @@
 # 月牙雪熊斩杀计算器 · 远程数据版
 
-打开 dist/月牙雪熊斩杀计算器.html，必须联网。网页只内嵌三张用户表情包。593条图鉴从 GitHub LFS 的实际下载地址加载，头像仅在需要时请求仓库的WebP。fetch使用cache:no-store，不使用IndexedDB、Service Worker或localStorage存储图鉴、头像或配置；关闭页面释放内存。浏览器内部内存、系统交换区不能视为完全不产生任何临时字节，但工作区不保留这些素材。
+打开 dist/月牙雪熊斩杀计算器.html，必须联网。网页只内嵌四张用户表情包。图鉴从 GitHub LFS 的实际下载地址加载，头像仅在需要时请求仓库的 WebP 或新增 PNG。fetch使用cache:no-store，不使用IndexedDB、Service Worker或localStorage存储图鉴、头像或配置；关闭页面释放内存。浏览器内部内存、系统交换区不能视为完全不产生任何临时字节，但工作区不保留这些素材。
 
 ## 本地与仓库
 
-assets/、data/只保存在远程；本地通过sparse-checkout排除，Git LFS skip-smudge禁用自动下载。旧LFS对象缓存清理后可从远程重新获取。不要运行git lfs pull或关闭稀疏检出，否则会重新下载资料。构建命令node build.mjs只读取代码与三张表情包。
+assets/、data/只保存在远程；本地通过sparse-checkout排除，Git LFS skip-smudge禁用自动下载。旧LFS对象缓存清理后可从远程重新获取。不要运行git lfs pull或关闭稀疏检出，否则会重新下载资料。构建命令node build.mjs只读取代码与四张表情包。
+
+## 维护数据
+
+使用 `./maintain-data.ps1` 添加／更新精灵、上传新头像、补充 WIKI 进化链，默认预览，添加 `--publish` 才发布。整个流程在内存中进行，不创建本地图鉴或头像文件。首次配置、常用命令和浏览器手动导入见 [维护说明](MAINTENANCE.md)。不要使用会写入本地数据的旧 `sync-data.mjs`、`thumbnails.py`。
 
 ## 萌化
 

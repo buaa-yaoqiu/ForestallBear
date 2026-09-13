@@ -7,7 +7,10 @@ globalThis.loadPetPortrait=async(img,name)=>{
   img.dataset.loadingPet=name;
   try {
     if(!portraitRequests.has(name))portraitRequests.set(name,(async()=>{
-      const r=await fetch(remoteRoot+'assets/thumbs/'+encodeURIComponent(name)+'.webp',{cache:'no-store'});
+      const pet=BearEngine.pets.find(p=>p.name===name);
+      const path=pet?.portraitPath||'assets/thumbs/'+name+'.webp';
+      if(!path.startsWith('assets/')||path.includes('..'))throw Error('头像路径无效');
+      const r=await fetch(remoteRoot+path.split('/').map(encodeURIComponent).join('/'),{cache:'no-store'});
       if(!r.ok)throw Error('头像下载失败');return URL.createObjectURL(await r.blob());
     })());
     const url=await portraitRequests.get(name);if(img.dataset.loadingPet===name)img.src=url;
