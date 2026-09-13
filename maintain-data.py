@@ -411,7 +411,7 @@ def main():
     if args.mode == 'check':
         print('远程数据读取成功；未保存本地数据。')
         return 0
-    additions, updates, evo_changes, warnings = [], [], [], []
+    additions, updates, evo_changes, warnings, notices = [], [], [], [], []
     changes = {}
     pages, incoming = [], []
     if args.mode == 'import-wiki':
@@ -487,13 +487,19 @@ def main():
             print('  ' + name)
     if pages:
         evolutions, evo_changes, unmatched = merge_evolutions(old_evo, pages, catalog['pets'])
-        warnings.extend('未匹配形态，整条分支跳过：' + name for name in unmatched)
+        messages = ['进化链成员尚未加入图鉴，当前精灵可先发布：' + name for name in unmatched]
+        if args.mode == 'import-wiki' and incoming:
+            notices.extend(messages)
+        else:
+            warnings.extend(messages)
     if catalog != old:
         changes['data/pets.json'] = encode(catalog)
         changes['data/pets.js'] = b'globalThis.BEAR_PETS=' + encode(catalog['pets']) + b';'
     if evolutions != old_evo:
         changes['data/evolutions.json'] = encode(evolutions)
     print(f'进化条目变更 {len(evo_changes)}；待发布文件 {len(changes)}')
+    for notice in notices:
+        print('待补：' + notice)
     for warning in warnings:
         print('注意：' + warning)
     if warnings and args.publish and not args.allow_partial:

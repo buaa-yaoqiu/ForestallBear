@@ -1,4 +1,6 @@
 import importlib.util
+import io
+import json
 import pathlib
 import unittest
 from unittest.mock import patch
@@ -112,6 +114,22 @@ class MaintenanceTests(unittest.TestCase):
             self.assertEqual(m.main(), 1)
             page.assert_called_once()
             publish.assert_not_called()
+
+    def test_import_can_publish_pet_before_other_chain_member_exists(self):
+        image = 'https://patchwiki.biligame.com/images/nrc/a.png'
+        old = {'pets': []}
+        payload = [{'url': 'https://wiki.biligame.com/nrc/A',
+                    'pet': {'name': 'A', 'stats': [1]*6, 'types': ['草'], 'trait': '新特性', 'image': image},
+                    'chains': [{'nodes': [{'name': 'A', 'href': '/nrc/A'}, {'name': 'B', 'href': '/nrc/B'}]}]}]
+        with patch.object(m.sys, 'argv', ['maintain-data.py', 'import-wiki', '--publish']), \
+             patch.object(m.sys, 'stdin', io.StringIO(json.dumps(payload))), \
+             patch.object(m.GitHub, 'authorize'), patch.object(m.GitHub, 'head', return_value='head'), \
+             patch.object(m.GitHub, 'load', side_effect=[old, {'entries': {}}]), \
+             patch.object(m, 'request', return_value=b'\x89PNG\r\n\x1a\nimage'), \
+             patch.object(m.GitHub, 'publish') as publish, patch('builtins.print'):
+            self.assertEqual(m.main(), 0)
+        publish.assert_called_once()
+        self.assertIn('data/pets.json', publish.call_args.args[1])
 
     def test_changed_remote_head_does_not_upload(self):
         github = m.GitHub('example/test', 'master')
