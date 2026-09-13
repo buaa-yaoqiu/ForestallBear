@@ -1,4 +1,5 @@
-# Examples: ./maintain-data.ps1 check; ./maintain-data.ps1 evolutions --name 火神 --publish
+# Keep this wrapper ASCII-only for Windows PowerShell 5.1 (UTF-8 without BOM).
+# Examples: ./maintain-data.ps1 check; ./maintain-data.ps1 pets --publish
 $ErrorActionPreference = 'Stop'
 $scriptFile = Join-Path $PSScriptRoot 'maintain-data.py'
 if (Get-Command py -ErrorAction SilentlyContinue) {
@@ -7,7 +8,7 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
     & python $scriptFile @args
 } else {
     $bundledPython = Join-Path $env:USERPROFILE '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
-    if (-not (Test-Path -LiteralPath $bundledPython)) { throw '请安装 Python 3.10+，然后重新运行。' }
+    if (-not (Test-Path -LiteralPath $bundledPython)) { throw 'Install Python 3.10+ and run this script again.' }
     & $bundledPython $scriptFile @args
 }
 exit $LASTEXITCODE

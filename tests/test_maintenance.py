@@ -69,6 +69,10 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(args.limit, 12)
         self.assertGreaterEqual(args.delay, 2)
 
+    def test_powershell_wrapper_is_ascii_for_windows_powershell(self):
+        wrapper = pathlib.Path(__file__).parents[1] / 'maintain-data.ps1'
+        wrapper.read_bytes().decode('ascii')
+
     def test_changed_remote_head_does_not_upload(self):
         github = m.GitHub('example/test', 'master')
         with patch.object(github, 'head', return_value='new'), patch.object(github, 'lfs') as upload:
