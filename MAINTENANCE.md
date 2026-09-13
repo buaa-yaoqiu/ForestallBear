@@ -21,18 +21,21 @@ cd D:\Coding\ForestallBear
 
 ## 1. 添加或更新精灵
 
-从 lovepvp 当前 `SPIRITS` 数据中读取名称、六维种族值、属性、特性及图片来源。
+只从 WIKI 精灵图鉴索引及对应详情页读取名称、六维种族值、属性、特性及头像。默认每次最多读取12个详情页，优先补充未从 WIKI 核对的条目；重复发布会跳过已完成条目。指定 `--name` 或加 `--refresh` 可以重新核对已存在的精灵。旧数据保留，未读取的条目不宣称已迁移来源。
 
 ```powershell
-# 先看全量差异，不上传
+# 先看本批差异，不上传
 ./maintain-data.ps1 pets
 
 # 只添加／更新一个精灵或形态（名称必须与来源一致）
 ./maintain-data.ps1 pets --name "椰浆布丁"
 ./maintain-data.ps1 pets --name "椰浆布丁" --publish
 
-# 发布来源站当前全部新增及数值变化
+# 分批补充并发布（默认12页），重复运行继续下一批
 ./maintain-data.ps1 pets --publish
+
+# 重新核对已有精灵数值，每次最多8页
+./maintain-data.ps1 pets --refresh --limit 8 --delay 5 --publish
 
 # 指定多个条目
 ./maintain-data.ps1 pets --name "火神" --name "烈火战神（首领形态）" --publish
@@ -44,7 +47,7 @@ cd D:\Coding\ForestallBear
 ./maintain-data.ps1 pets --name "火神" --refresh-images --publish
 ```
 
-`--refresh-images` 必须指定名称，防止意外重传所有图片。脚本不压缩新增 PNG；原图可能比原有 WebP 大，但只会在选中该精灵时加载。来源站未收录的新精灵不会凭空创建，请等来源更新，或先完善来源站资料。
+`--refresh-images` 必须指定名称，防止意外重传所有图片。新增精灵或头像来源发生变化时自动上传 PNG，其他条目保留现有头像。脚本不压缩新增 PNG；原图可能比原有 WebP 大，但只会在选中该精灵时加载。WIKI 未收录或字段缺失的精灵不会凭空创建，也不从其他站点补齐；请先完善 WIKI 资料。
 
 ## 2. 自动补充进化链
 
@@ -126,7 +129,7 @@ Chrome／Edge 开发者工具提供 `copy()`；这不是普通网页脚本 API�
 ./maintain-data.ps1 all --limit 8 --delay 5 --publish
 ```
 
-`all` 先同步精灵，后读进化链；`--limit` 只限制 WIKI 页数，不限制 lovepvp 的精灵更新数。未加 `--name` 时会检查全量精灵差异。每次发布的图片、图鉴和进化链通过 **一次 Git 提交**一起生效；未变化的文件不额外上传。若其他人在同时提交，脚本拒绝强制覆盖，请重新预览后运行。
+`all` 对同一个 WIKI 详情页同时读取精灵资料和进化链，不重复请求；`--limit` 限制本批详情页总数。未加 `--name` 时分批补缺，已从 WIKI 核对的精灵默认跳过，要重查数值请加 `--refresh`。新链节点尚未收入本批图鉴时会跳过对应分支，先继续补图鉴，再运行 `evolutions`。每次发布的图片、图鉴和进化链通过 **一次 Git 提交**一起生效；未变化的文件不额外上传。若其他人在同时提交，脚本拒绝强制覆盖，请重新预览后运行。
 
 ## 5. 发布后及本地清理
 

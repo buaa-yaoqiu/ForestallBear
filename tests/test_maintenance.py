@@ -73,6 +73,33 @@ class MaintenanceTests(unittest.TestCase):
         wrapper = pathlib.Path(__file__).parents[1] / 'maintain-data.ps1'
         wrapper.read_bytes().decode('ascii')
 
+    def test_wiki_pet_complete_and_ordered(self):
+        html = ''.join(f'<div class="roco-stat"><span class="roco-stat-name">{label}</span><span class="roco-stat-val" data-val="{value}">{value}</span></div>' for label, value in zip(['速度','魔防','物防','魔攻','攻击','生命'], [55,151,81,109,109,108]))
+        html += '<div class="roco-ident-types"><span class="roco-type" data-type="草">草</span></div><span class="roco-feature-name">氧循环</span><div class="roco-art" data-view="pet"><a><img src="https://patchwiki.biligame.com/images/nrc/test.png"></a></div>'
+        pet = m.wiki_pet(m.Document(html).root, '成兽', 'https://wiki.biligame.com/nrc/成兽')
+        self.assertEqual(pet['stats'], [108,109,109,81,151,55])
+        self.assertEqual(pet['types'], ['草'])
+        self.assertEqual(pet['trait'], '氧循环')
+
+    def test_incomplete_wiki_pet_rejected(self):
+        with self.assertRaises(m.RemoteError):
+            m.wiki_pet(m.Document('<div></div>').root, '成兽', '')
+
+    def test_wiki_index_retains_existing_lord_name(self):
+        html = '<div class="npc-card"><span class="npc-card-target"><a title="王兽" href="/nrc/王兽">王兽</a></span></div>'
+        self.assertIn('王兽（首领形态）', m.wiki_catalog(m.Document(html).root, self.pets))
+
+    def test_maintenance_does_not_reference_other_data_source(self):
+        source = pathlib.Path(__file__).parents[1] / 'maintain-data.py'
+        self.assertNotIn('lovepvp', source.read_text(encoding='utf-8'))
+
+    def test_blocked_wiki_preview_reports_failure_and_never_publishes(self):
+        catalog = {'pets': [{'name': '成兽'}]}
+        with patch.object(m.sys, 'argv', ['maintain-data.py', 'pets']), patch.object(m.GitHub, 'authorize'), patch.object(m.GitHub, 'head', return_value='head'), patch.object(m.GitHub, 'load', side_effect=[catalog, {'entries': {}}]), patch.object(m, 'wiki_page', side_effect=m.RemoteError('HTTP 567')) as page, patch.object(m.GitHub, 'publish') as publish, patch('builtins.print'):
+            self.assertEqual(m.main(), 1)
+            page.assert_called_once()
+            publish.assert_not_called()
+
     def test_changed_remote_head_does_not_upload(self):
         github = m.GitHub('example/test', 'master')
         with patch.object(github, 'head', return_value='new'), patch.object(github, 'lfs') as upload:

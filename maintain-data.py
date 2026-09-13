@@ -273,25 +273,59 @@ def merge_evolutions(old, pages, pets):
     return result, changed, sorted(unknown)
 
 
-def parse_catalog(html):
-    match = re.search(r'const SPIRITS\s*=\s*(\[.*?\]);', html, re.S)
-    if not match:
-        raise RemoteError('来源站 SPIRITS 字段未找到，拒绝更新')
-    rows = json.loads(match[1])
-    pets = []
-    for row in rows:
-        pet = {'name': row['n'], 'stats': [row[k] for k in ['hp','pa','ma','pd','md','sp']],
-               'types': [row[k] for k in ['a1','a2'] if row.get(k)], 'trait': row['tr'], 'image': row['img']}
-        if any(type(n) not in [int, float] or not 0 < n < 10000 for n in pet['stats']):
-            raise RemoteError('种族值不完整：' + pet['name'])
-        if not pet['types'] or not set(pet['types']).issubset(TYPES) or re.search(r'[<>\x00-\x1f]', pet['name'] + pet['trait']):
-            raise RemoteError('字段无效：' + pet['name'])
-        if urllib.parse.urlparse(pet['image']).hostname != 'patchwiki.biligame.com':
-            raise RemoteError('图片不在已知 BWIKI 素材域名：' + pet['name'])
-        pets.append(pet)
-    if len({p['name'] for p in pets}) != len(pets):
-        raise RemoteError('来源存在重名条目，拒绝更新')
-    return pets
+def descendants(node):
+    yield node
+    for child in node.children:
+        yield from descendants(child)
+
+
+def wiki_catalog(doc, pets):
+    names = {p['name'] for p in pets}
+    links = {}
+    for card in doc.all('npc-card'):
+        target = card.find('npc-card-target')
+        anchor = next(iter(target.links()), None) if target else None
+        if not anchor:
+            continue
+        title = anchor.attrs.get('title', '')
+        url = urllib.parse.urljoin('https://wiki.biligame.com', anchor.attrs.get('href', ''))
+        if not title or urllib.parse.urlparse(url).hostname != 'wiki.biligame.com':
+            continue
+        name = title
+        if title + '（首领形态）' in names and title not in names:
+            name += '（首领形态）'
+        elif card.attrs.get('data-form') == 'lord' and not title.endswith('（首领形态）'):
+            name += '（首领形态）'
+        if name in links and links[name] != url:
+            raise RemoteError('WIKI 索引名称冲突：' + name)
+        links[name] = url
+    if not links:
+        raise RemoteError('WIKI索引卡片结构变化，未找到精灵链接')
+    return links
+
+
+def wiki_pet(doc, name, url):
+    values = {}
+    for stat in doc.all('roco-stat'):
+        label, value = stat.find('roco-stat-name'), stat.find('roco-stat-val')
+        if label and value:
+            values[label.text()] = int(value.attrs.get('data-val') or value.text())
+    labels = ['生命', '攻击', '魔攻', '物防', '魔防', '速度']
+    if any(label not in values or not 0 < values[label] < 10000 for label in labels):
+        raise RemoteError('WIKI 六维种族值不完整，保留旧条目：' + name)
+    ident = doc.find('roco-ident-types')
+    types = [n.attrs.get('data-type') or n.text() for n in ident.all('roco-type')] if ident else []
+    trait = doc.find('roco-feature-name')
+    art = next((n for n in doc.all('roco-art') if n.attrs.get('data-view') == 'pet'), None)
+    image = next((n.attrs.get('src') for n in descendants(art) if n.tag == 'img'), None) if art else None
+    if not types or not set(types).issubset(TYPES) or not trait or not trait.text():
+        raise RemoteError('WIKI 属性或特性缺失，保留旧条目：' + name)
+    if not image or urllib.parse.urlparse(image).hostname != 'patchwiki.biligame.com':
+        raise RemoteError('WIKI 头像缺失或不在素材域名：' + name)
+    if re.search(r'[<>\x00-\x1f]', name + trait.text()):
+        raise RemoteError('WIKI 名称／特性字段无效：' + name)
+    return {'name': name, 'stats': [values[k] for k in labels], 'types': types,
+            'trait': trait.text(), 'image': image, 'wikiSource': url}
 
 
 def merge_catalog(old, incoming, selected):
@@ -312,7 +346,7 @@ def merge_catalog(old, incoming, selected):
             additions.append(pet['name'])
     # Preserve removed/missing source records and every existing index for saved configs.
     if additions or updates:
-        result.update(count=len(result['pets']), source='https://lovepvp.top', retrievedAt=datetime.now(timezone.utc).isoformat())
+        result.update(count=len(result['pets']), source='https://wiki.biligame.com/nrc', retrievedAt=datetime.now(timezone.utc).isoformat())
     return result, additions, updates
 
 
@@ -324,7 +358,7 @@ def args_parser():
     parser.add_argument('--name', action='append', default=[], help='精确精灵名称，可重复；形态括号必须保留')
     parser.add_argument('--limit', type=int, default=12, help='本次最多读取WIKI页面数，默认12')
     parser.add_argument('--delay', type=float, default=3, help='WIKI页面请求间隔秒数，最低2秒')
-    parser.add_argument('--refresh', action='store_true', help='进化链包含已核实条目；默认仅补缺')
+    parser.add_argument('--refresh', action='store_true', help='重新核对已有精灵／进化链；默认仅补缺')
     parser.add_argument('--refresh-images', action='store_true', help='重取本次指定精灵图片，不指定名字时禁止')
     parser.add_argument('--publish', action='store_true', help='明确发布到远程（非强制推送）')
     parser.add_argument('--allow-partial', action='store_true', help='站点中断时允许发布已完成部分，未完成记录保留')
@@ -359,29 +393,6 @@ def main():
         return 0
     additions, updates, evo_changes, warnings = [], [], [], []
     changes = {}
-    if args.mode in ['pets', 'all']:
-        incoming = parse_catalog(request('https://lovepvp.top').decode('utf-8'))
-        missing = set(args.name) - {p['name'] for p in incoming}
-        if missing:
-            raise RemoteError('来源未找到指定精灵：' + '、'.join(sorted(missing)))
-        catalog, additions, updates = merge_catalog(old, incoming, set(args.name))
-        images = set(additions) | (set(args.name) if args.refresh_images else set())
-        for pet in catalog['pets']:
-            if pet['name'] not in images:
-                continue
-            # Original image travels from BWIKI to GitHub in memory only. No Pillow required.
-            suffix = hashlib.sha256(pet['image'].encode()).hexdigest()[:16]
-            path = 'assets/remote/' + suffix + '.png'
-            pet['portraitPath'] = path
-            if args.publish:
-                content = request(pet['image'])
-                if not content.startswith(b'\x89PNG\r\n\x1a\n'):
-                    raise RemoteError('头像不是预期的 PNG：' + pet['name'])
-                changes[path] = content
-            print(('将上传头像：' if not args.publish else '已读取头像到内存：') + pet['name'])
-        print(f'精灵：新增 {len(additions)}，更新 {len(updates)}（已有序号不变，缺失条目不删除）')
-        for name in additions + updates:
-            print('  ' + name)
     pages = []
     if args.mode == 'import-wiki':
         print('请粘贴浏览器进化链 JSON，完成后发送 EOF（Windows: Enter、Ctrl+Z、Enter）：')
@@ -390,46 +401,67 @@ def main():
             pages = [pages]
         if not isinstance(pages, list) or not all(isinstance(p, dict) and isinstance(p.get('chains'), list) for p in pages):
             raise RemoteError('进化链 JSON 格式不正确')
-    elif args.mode in ['evolutions', 'all']:
+    elif args.mode in ['pets', 'evolutions', 'all']:
+        incoming = []
         try:
             index = wiki_page('https://wiki.biligame.com/nrc/' + urllib.parse.quote('精灵图鉴'))
-            links = {}
-            for card in index.all('npc-card'):
-                target = card.find('npc-card-target')
-                anchor = next(iter(target.links()), None) if target else None
-                if anchor:
-                    links[anchor.attrs.get('title','')] = urllib.parse.urljoin('https://wiki.biligame.com', anchor.attrs.get('href',''))
-            if not links:
-                raise RemoteError('WIKI索引卡片结构变化，未找到精灵链接')
+            links = wiki_catalog(index, old['pets'])
+            missing = set(args.name) - set(links)
+            if missing:
+                raise RemoteError('WIKI 索引未找到指定精灵：' + '、'.join(sorted(missing)))
+            existing = {p['name']: p for p in old['pets']}
             count = 0
             covered = set()
-            for pet in catalog['pets']:
-                name = pet['name']
+            for name, url in links.items():
                 if args.name and name not in args.name:
                     continue
-                if name in covered or (not args.refresh and not args.name and evolutions['entries'].get(name,{}).get('verified')):
+                pet_needed = args.mode in ['pets', 'all'] and (args.name or args.refresh or not existing.get(name, {}).get('wikiSource'))
+                evo_needed = args.mode in ['evolutions', 'all'] and (args.name or args.refresh or not old_evo['entries'].get(name, {}).get('verified'))
+                if args.mode == 'evolutions' and name not in existing:
                     continue
-                url = links.get(name) or links.get(name.removesuffix('（首领形态）'))
-                if not url:
-                    warnings.append('WIKI索引未找到：' + name)
+                if not pet_needed and (not evo_needed or name in covered):
                     continue
                 time.sleep(args.delay)
-                page = wiki_timelines(wiki_page(url), url)
+                doc = wiki_page(url)
                 count += 1
-                if page['chains']:
-                    pages.append(page)
-                    for chain in page['chains']:
-                        for node in chain['nodes']:
-                            match = resolve_node(node, url, catalog['pets'])
-                            if match:
-                                covered.add(match)
-                else:
-                    warnings.append('未找到进化链栏（保留旧数据）：' + name)
-                print(f'WIKI {count}/{args.limit}：{name}，{len(page["chains"])} 个分支')
+                if pet_needed:
+                    try:
+                        incoming.append(wiki_pet(doc, name, url))
+                    except (RemoteError, ValueError) as error:
+                        warnings.append(str(error))
+                if evo_needed:
+                    page = wiki_timelines(doc, url)
+                    if page['chains']:
+                        pages.append(page)
+                        for chain in page['chains']:
+                            matches = [resolve_node(n, url, old['pets']) for n in chain['nodes']]
+                            if all(matches):
+                                covered.update(matches)
+                    else:
+                        warnings.append('未找到进化链栏（保留旧数据）：' + name)
+                print(f'WIKI {count}/{args.limit}：{name}')
                 if count >= args.limit:
                     break
         except RemoteError as error:
             warnings.append(str(error))
+        catalog, additions, updates = merge_catalog(old, incoming, set(args.name))
+        for pet in catalog['pets']:
+            previous = next((p for p in old['pets'] if p['name'] == pet['name']), None)
+            if pet['name'] not in {p['name'] for p in incoming}:
+                continue
+            if previous and pet['image'] == previous.get('image') and not args.refresh_images:
+                continue
+            path = 'assets/remote/' + hashlib.sha256(pet['image'].encode()).hexdigest()[:16] + '.png'
+            pet['portraitPath'] = path
+            if args.publish:
+                content = request(pet['image'])
+                if not content.startswith(b'\x89PNG\r\n\x1a\n'):
+                    raise RemoteError('头像不是预期的 PNG：' + pet['name'])
+                changes[path] = content
+            print('待上传头像：' + pet['name'])
+        print(f'精灵：新增 {len(additions)}，更新 {len(updates)}（已有序号不变，缺失条目不删除）')
+        for name in additions + updates:
+            print('  ' + name)
     if pages:
         evolutions, evo_changes, unmatched = merge_evolutions(old_evo, pages, catalog['pets'])
         warnings.extend('未匹配形态，整条分支跳过：' + name for name in unmatched)
@@ -449,7 +481,7 @@ def main():
         github.publish(head, changes)
     else:
         print('这是预览；加 --publish 才会上传。图片与数据未写入本地文件。')
-    return 0
+    return 1 if warnings and not args.allow_partial else 0
 
 
 if __name__ == '__main__':

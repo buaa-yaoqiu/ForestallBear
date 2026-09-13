@@ -8,7 +8,7 @@ assets/、data/只保存在远程；本地通过sparse-checkout排除，Git LFS 
 
 ## 维护数据
 
-使用 `./maintain-data.ps1` 添加／更新精灵、上传新头像、补充 WIKI 进化链，默认预览，添加 `--publish` 才发布。整个流程在内存中进行，不创建本地图鉴或头像文件。首次配置、常用命令和浏览器手动导入见 [维护说明](MAINTENANCE.md)。不要使用会写入本地数据的旧 `sync-data.mjs`、`thumbnails.py`。
+使用 `./maintain-data.ps1` 仅从 WIKI 添加／更新精灵、上传新头像、补充进化链，每批默认12页，默认预览，添加 `--publish` 才发布。字段缺失时保留旧数据，不向其他来源回退。整个流程在内存中进行，不创建本地图鉴或头像文件。首次配置、常用命令和浏览器手动导入见 [维护说明](MAINTENANCE.md)。不要使用会写入本地数据的旧 `sync-data.mjs`、`thumbnails.py`。
 
 ## 萌化
 
