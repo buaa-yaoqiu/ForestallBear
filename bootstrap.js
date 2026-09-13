@@ -19,7 +19,7 @@ async function loadRemoteData(){
   try {
     const [petsResponse,evolutionResponse]=await Promise.all([
       fetch(remoteRoot+'data/pets.json',{cache:'no-store',signal:AbortSignal.timeout(45000)}),
-      fetch('https://raw.githubusercontent.com/buaa-yaoqiu/ForestallBear/master/data/evolutions.json',{cache:'no-store',signal:AbortSignal.timeout(45000)})
+      fetch(remoteRoot+'data/evolutions.json',{cache:'no-store',signal:AbortSignal.timeout(45000)})
     ]);
     if(!petsResponse.ok||!evolutionResponse.ok)throw Error('GitHub 数据暂不可用');
     const catalog=await petsResponse.json(),evolutions=await evolutionResponse.json();
