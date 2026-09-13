@@ -1,6 +1,6 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 const images={};
-for(const name of ['先发拿下','大发雷霆','冰点你咯'])images[name]='data:image/jpeg;base64,'+(await readFile(name+'.jpg')).toString('base64');
+for(const name of ['先发拿下','大发雷霆','冰点你咯','可恶的冰布丁'])images[name]='data:image/jpeg;base64,'+(await readFile(name+'.jpg')).toString('base64');
 images.logo=images['先发拿下'];
 await writeFile('assets.js','globalThis.BEAR_ASSETS='+JSON.stringify(images)+';');
 const css=await readFile('style.css','utf8');
