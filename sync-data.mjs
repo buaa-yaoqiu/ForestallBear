@@ -1,0 +1,17 @@
+import {writeFile,mkdir} from 'node:fs/promises';
+const response=await fetch('https://lovepvp.top');
+if(!response.ok)throw Error(`Source ${response.status}`);
+const html=await response.text();
+const match=html.match(/const SPIRITS\s*=\s*(\[.*?\]);/s);
+if(!match)throw Error('Missing SPIRITS');
+const rows=JSON.parse(match[1]);
+const first=['月牙雪熊','火神','水灵','魔力猫','迪莫','雪影娃娃'];
+const ordered=[...first.map(n=>rows.find(p=>p.n===n)),...rows.filter(p=>!first.includes(p.n))];
+const pets=ordered.map(p=>({name:p.n,stats:[p.hp,p.pa,p.ma,p.pd,p.md,p.sp],types:[p.a1,p.a2].filter(Boolean),trait:p.tr,image:p.img}));
+if(pets.length<500||new Set(pets.map(p=>p.name)).size!==pets.length)throw Error('Incomplete or duplicate dataset');
+for(const p of pets)if(p.stats.some(n=>!Number.isFinite(n))||!p.types.length)throw Error(`Invalid ${p.name}`);
+await mkdir('data',{recursive:true});
+const snapshot={source:'https://lovepvp.top',retrievedAt:new Date().toISOString(),count:pets.length,pets};
+await writeFile('data/pets.json',JSON.stringify(snapshot,null,2));
+await writeFile('data/pets.js',`globalThis.BEAR_PETS=${JSON.stringify(pets)};`);
+console.log(`Synced ${pets.length} pets including forms; first six IDs preserved.`);

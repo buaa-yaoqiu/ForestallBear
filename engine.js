@@ -2,14 +2,8 @@
   'use strict';
   const keys = ['hp','pa','ma','pd','md','sp'];
   const labels = ['生命','物攻','魔攻','物防','魔防','速度'];
-  const pets = [
-    {name:'月牙雪熊',stats:[126,97,39,141,103,80],types:['冰','幻'],trait:'月牙雪糕',image:'https://patchwiki.biligame.com/images/rocom/f/fc/7qu2ylu57menspxgap05ybaea3x9qu3.png'},
-    {name:'火神',stats:[117,139,61,94,72,130],types:['火'],trait:'助燃',image:'https://patchwiki.biligame.com/images/rocom/8/84/boqwe6u97r8unsy5mzakw5zkfdbszob.png'},
-    {name:'水灵',stats:[125,58,127,94,132,85],types:['水'],trait:'浸润',image:'https://patchwiki.biligame.com/images/rocom/2/2f/0wqphimotgpcz5rlcauthvx47atrsq0.png'},
-    {name:'魔力猫',stats:[108,109,109,81,151,55],types:['草'],trait:'氧循环',image:'https://patchwiki.biligame.com/images/rocom/b/b0/hco9lbeodwhu0lv8xz0qlpen2p21x2a.png'},
-    {name:'迪莫',stats:[120,80,80,105,105,92],types:['光'],trait:'最好的伙伴',image:'https://patchwiki.biligame.com/images/rocom/2/2b/sw0puzl5c0n8hu49ryqk7drh1gxtblr.png'},
-    {name:'雪影娃娃',stats:[130,103,98,66,130,90],types:['冰','萌'],trait:'捉迷藏',image:'https://patchwiki.biligame.com/images/rocom/4/4c/lmc3s1kouusumtbveogttnow6qh5z7d.png'}
-  ];
+  const pets = root.BEAR_PETS || (typeof require==='function' ? require('./data/pets.json').pets : []);
+  if(!pets.length)throw Error('Pet data missing');
   // Row = increased stat; columns = decreased stats in keys order, excluding self.
   const natureRows = [
     ['沉默','平和','忧郁','粗心','踏实'],['逞强','固执','大胆','调皮','勇敢'],

@@ -37,3 +37,9 @@ Git LFS 管理所有 JPG/PNG 图片、内嵌资源 assets.js 和 dist 离线 HTM
 页头 logo 与标签图标使用用户提供的 `先发拿下.jpg` 并打包内嵌。等级拖条在0时为中性灰，从中点向当前等级方向填色。性格提示为绿↑、红↓，无修正不显示箭头。
 
 WIKI 内容引用按 CC BY-NC-SA 4.0，原图版权归游戏权利人。此版本用于非商业学习测试；未复制来源站点的界面代码。
+
+## 全量图鉴数据
+
+原始 PNG 保留在 assets 并由 LFS 托管。离线页面优先使用 assets/thumbs 的256像素 WebP 头像以减少体积。运行 `python thumbnails.py`（需 Pillow）生成缩略图，再运行 `node build.mjs` 重新打包。
+
+2026-09-14 从 lovepvp.top 全量提取 593 个精灵／形态条目（范围为来源站当前收录，并非独立保证游戏全部实装形态）。data/pets.json 记录来源、抓取时间、六维、属性、特性名、图片地址，data/pets.js 为离线运行数据。原先6只保留顺序，兼容已有配置。运行 node sync-data.mjs 更新数据，再运行 node build.mjs 打包。目标支持名称／属性／特性搜索；特性仅展示，尚未自动模拟所有特性。图鉴数据、图片、离线打包文件均由 Git LFS 托管。

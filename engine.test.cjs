@@ -1,5 +1,8 @@
 const assert=require('node:assert/strict');
 const E=require('./engine.js');
+assert.equal(E.pets.length,593);
+assert.equal(new Set(E.pets.map(p=>p.name)).size,593);
+assert.deepEqual(E.pets.slice(0,6).map(p=>p.name),['月牙雪熊','火神','水灵','魔力猫','迪莫','雪影娃娃']);
 const c={attack:200,defense:200,types:['火'],freeze:0,marks:0,reduction:0,mainMult:1,starMult:1,currentHP:100,maxHP:200};
 assert.equal(E.damage({...c,atkLevel:5,defLevel:-3}).ability,1.8);
 assert.equal(E.damage({...c,atkLevel:-5,defLevel:3}).ability,1/1.8);
