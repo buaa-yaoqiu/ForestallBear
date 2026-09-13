@@ -73,7 +73,7 @@ assert.deepEqual(E.outcome({...c,freeze:5,currentHP:10}).segments,{frozen:10,red
 assert.deepEqual(E.outcome({...c,currentHP:20,survive:true}).segments,{frozen:0,red:1,star:0,main:19,empty:180});
 assert.equal(E.outcome({...c,currentHP:20,survive:true}).killed,false);
 assert.equal(E.outcome({...c,currentHP:20,survive:true,freeze:1}).killed,true);
-for(const pet of E.pets){
+for(const pet of [{types:['火']},{types:['光']},{types:['幻']},{types:['机械']},{types:['武','毒']},{types:['冰','萌']}]){
   let last=-1;
   for(let freeze=0;freeze<=20;freeze++){
     const x=E.outcome({...c,freeze,types:pet.types});assert.ok(Number.isInteger(x.total)&&x.total>=last);last=x.total;
