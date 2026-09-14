@@ -2,7 +2,7 @@
 globalThis.startBearApp=() => {
   'use strict';
   const E=BearEngine,$=id=>document.getElementById(id),assets=globalThis.BEAR_ASSETS||{};
-  const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},morphPath:[],freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,survive:false,currentHP:null});
+  const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},morphPath:[],freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,stockpile:0,survive:false,currentHP:null});
   let state=initial(),timer;
   const num=(n,max=100,min=0)=>E.bounded(n,min,max);
   const natureOf=v=>typeof v.nature==='object'?v.nature:E.natures[v.nature]||E.natures['无修正'];
@@ -21,6 +21,7 @@ globalThis.startBearApp=() => {
     for(const name of s.morphPath||[]){if(!globalThis.BEAR_EVOLUTIONS[previous]?.previous.includes(name)||!E.pets.some(p=>p.name===name))throw Error('萌化路径与进化链不符');out.morphPath.push(name);previous=name;}
     out.reduction=num(s.reduction);for(const k of ['mainMult','starMult'])out[k]=E.bounded(s[k],0,10,1);
     for(const k of ['atkLevel','defLevel','powerLevel'])out[k]=Math.trunc(E.bounded(s[k],-99,99,0));
+    out.stockpile=Math.trunc(E.bounded(s.stockpile,0,99,0));
     out.survive=s.survive===true;out.currentHP=s.currentHP===null?null:Math.round(num(s.currentHP,99999));return out;
   }
   function statPet(side){return side==='def'&&state.morphPath.length?E.pets.find(p=>p.name===state.morphPath.at(-1)):E.pets[state[side].pet];}
@@ -28,13 +29,14 @@ globalThis.startBearApp=() => {
   function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(timer);timer=setTimeout(()=>$('toast').classList.remove('visible'),2600);}
   function card(side){
     const v=state[side],p=E.pets[v.pet],shown=statPet(side),atk=side==='atk',title=atk?'攻击方':'防御方';
-    $(atk?'attacker':'defender').innerHTML=`<div class="card-heading"><span class="side-label">${atk?'ATTACKER / 攻击方':'DEFENDER / 防御方'}</span><small>${atk?'固定精灵':E.pets.length+' 个精灵／形态'}</small></div><select id="${side}-pet" class="pet-select" aria-label="${title}精灵">${E.pets.map((p,i)=>!atk||i===0?`<option value="${i}" ${i===v.pet?'selected':''}>${p.name}</option>`:'').join('')}</select><div class="pet-banner"><div class="portrait-wrap"><img data-pet-portrait="${shown.name}" alt="${p.name}">${!atk&&state.morphPath.length?'<span class="morph-heart" aria-label="已萌化">♥</span>':''}</div><div class="pet-meta"><div class="type-badges">${p.types.map(t=>`<span>${t}系</span>`).join('')}</div><div class="trait">种族总和 <b>${shown.stats.reduce((a,b)=>a+b,0)}</b></div></div></div><table class="stats-table"><thead><tr><th>能力</th><th>种族</th><th>个体</th><th class="nature-col">增益</th><th class="nature-col">减益</th><th>面板</th></tr></thead><tbody>${E.keys.map((k,i)=>`<tr><td><span class="stat-label">${E.labels[i]}</span></td><td>${shown.stats[i]}</td><td><div class="iv-stepper"><output id="${side}-iv-${i}" aria-label="${title}${E.labels[i]}个体值">${v.ivs[i]}</output><div><button id="${side}-iv-up-${i}" aria-label="增加${title}${E.labels[i]}个体值">▴</button><button id="${side}-iv-down-${i}" aria-label="减少${title}${E.labels[i]}个体值">▾</button></div></div></td><td class="nature-col"><button class="nature-choice up" id="${side}-nature-up-${i}" aria-label="${title}${E.labels[i]}性格增益" aria-pressed="false">↑</button></td><td class="nature-col"><button class="nature-choice down" id="${side}-nature-down-${i}" aria-label="${title}${E.labels[i]}性格减益" aria-pressed="false">↓</button></td><td><output id="${side}-actual-${i}" class="actual" aria-label="${title}${E.labels[i]}实际面板"></output></td></tr>`).join('')}</tbody></table><div class="stat-foot"><span>个体 0 / 42 / 48 / 54 / 60 · 面板自动计算</span></div>${atk?'<section class="bear-trait"><div class="trait-top"><span class="trait-symbol">✦</span><div><small>精灵特性</small><h3>月牙雪糕</h3></div><span class="trait-auto">自动生效</span></div><p>使用攻击技能时，目标每有 1 层冻结，在攻击前使其获得 1 层星陨印记。</p><div class="trait-chain"><span>❄ 冻结</span><b>→</b><span>✧ 星陨印记</span></div></section>':`<section class="defender-trait"><div class="trait-top"><span class="trait-symbol">◇</span><div><small>精灵特性</small><h3>${p.trait}</h3></div><span class="trait-default">默认无效果</span></div></section><div class="hp-control"><label for="current-hp">当前生命</label><input id="current-hp" type="number" min="0" step="1"><button id="full-hp">满血</button></div>`}`;
+    const hasStockpile=!atk&&p.trait==='囤积';
+    $(atk?'attacker':'defender').innerHTML=`<div class="card-heading"><span class="side-label">${atk?'ATTACKER / 攻击方':'DEFENDER / 防御方'}</span><small>${atk?'固定精灵':E.pets.length+' 个精灵／形态'}</small></div><select id="${side}-pet" class="pet-select" aria-label="${title}精灵">${E.pets.map((p,i)=>!atk||i===0?`<option value="${i}" ${i===v.pet?'selected':''}>${p.name}</option>`:'').join('')}</select><div class="pet-banner"><div class="portrait-wrap"><img data-pet-portrait="${shown.name}" alt="${p.name}">${!atk&&state.morphPath.length?'<span class="morph-heart" aria-label="已萌化">♥</span>':''}</div><div class="pet-meta"><div class="type-badges">${p.types.map(t=>`<span>${t}系</span>`).join('')}</div><div class="trait">种族总和 <b>${shown.stats.reduce((a,b)=>a+b,0)}</b></div></div></div><table class="stats-table"><thead><tr><th>能力</th><th>种族</th><th>个体</th><th class="nature-col">增益</th><th class="nature-col">减益</th><th>面板</th></tr></thead><tbody>${E.keys.map((k,i)=>`<tr><td><span class="stat-label">${E.labels[i]}</span></td><td>${shown.stats[i]}</td><td><div class="iv-stepper"><output id="${side}-iv-${i}" aria-label="${title}${E.labels[i]}个体值">${v.ivs[i]}</output><div><button id="${side}-iv-up-${i}" aria-label="增加${title}${E.labels[i]}个体值">▴</button><button id="${side}-iv-down-${i}" aria-label="减少${title}${E.labels[i]}个体值">▾</button></div></div></td><td class="nature-col"><button class="nature-choice up" id="${side}-nature-up-${i}" aria-label="${title}${E.labels[i]}性格增益" aria-pressed="false">↑</button></td><td class="nature-col"><button class="nature-choice down" id="${side}-nature-down-${i}" aria-label="${title}${E.labels[i]}性格减益" aria-pressed="false">↓</button></td><td><output id="${side}-actual-${i}" class="actual" aria-label="${title}${E.labels[i]}实际面板"></output></td></tr>`).join('')}</tbody></table><div class="stat-foot"><span>个体 0 / 42 / 48 / 54 / 60 · 面板自动计算</span></div>${atk?'<section class="bear-trait"><div class="trait-top"><span class="trait-symbol">✦</span><div><small>精灵特性</small><h3>月牙雪糕</h3></div><span class="trait-auto">自动生效</span></div><p>使用攻击技能时，目标每有 1 层冻结，在攻击前使其获得 1 层星陨印记。</p><div class="trait-chain"><span>❄ 冻结</span><b>→</b><span>✧ 星陨印记</span></div></section>':`<section class="defender-trait ${hasStockpile?'active-trait':''}"><div class="trait-top"><span class="trait-symbol">◇</span><div><small>精灵特性</small><h3>${p.trait}</h3></div><span class="trait-default">${hasStockpile?'已计入':'无效果'}</span></div>${hasStockpile?'<p>每有 1 层能量，双防提高 10%</p><div class="stockpile-control"><div class="stockpile-heading"><label for="stockpile">囤积能量 <span>层</span></label><div class="stockpile-stepper"><button id="stockpile-minus" aria-label="减少一层囤积能量">−</button><input id="stockpile" type="number" min="0" max="99" step="1"><button id="stockpile-plus" aria-label="增加一层囤积能量">＋</button></div></div><input id="stockpile-range" aria-label="囤积能量拖条" type="range" min="0" max="99" step="1"><div class="range-labels"><span>0</span><span>99 层</span></div></div>':''}</section><div class="hp-control"><label for="current-hp">当前生命</label><input id="current-hp" type="number" min="0" step="1"><button id="full-hp">满血</button></div>`}`;
     document.querySelectorAll('[data-pet-portrait]').forEach(img=>globalThis.loadPetPortrait(img,img.dataset.petPortrait));
     if(!atk){
       $('def-pet').insertAdjacentHTML('beforebegin','<input id="pet-search" type="search" placeholder="搜索名称、拼音、首字母、属性或特性" aria-label="搜索目标精灵"><p id="pet-search-count" class="field-note"></p>');
       $('pet-search').oninput=e=>{const q=e.target.value.trim().toLowerCase();let count=0;for(const option of $('def-pet').options){const p=E.pets[Number(option.value)];const show=[p.name,p.pinyin||'',p.initials||'',p.trait,...p.types].join(' ').toLowerCase().includes(q);option.hidden=!show;if(show)count++;} $('pet-search-count').textContent=q?'匹配 '+count+' 个精灵／形态':'';};
     }
-    $(`${side}-pet`).addEventListener('change',e=>{state[side]={...initial()[side],pet:Number(e.target.value)};if(!atk){state.currentHP=null;state.morphPath=[];}card(side);render();});
+    $(`${side}-pet`).addEventListener('change',e=>{state[side]={...initial()[side],pet:Number(e.target.value)};if(!atk){state.currentHP=null;state.morphPath=[];state.stockpile=0;}card(side);render();});
     for(const column of ['up','down'])for(let i=0;i<6;i++)$(`${side}-nature-${column}-${i}`).onclick=()=>{
       const n={...natureOf(v)},other=column==='up'?'down':'up';
       n[column]=n[column]===i?-1:i;if(n[column]>=0&&n[other]===i)n[other]=-1;
@@ -59,6 +61,11 @@ globalThis.startBearApp=() => {
       $('current-hp-range').oninput=e=>{state.currentHP=Number(e.target.value);render();};
       for(const [id,step] of [['hp-minus',-1],['hp-plus',1]])$(id).onclick=()=>{const c=config();state.currentHP=Math.max(0,Math.min(c.maxHP,c.currentHP+step));render(true);};
       $('full-hp').onclick=()=>{state.currentHP=null;render();};
+      if(hasStockpile){
+        bindNumber('stockpile',x=>{state.stockpile=Math.trunc(x);},0,99);
+        $('stockpile-range').oninput=e=>{state.stockpile=Number(e.target.value);render();};
+        for(const [id,step] of [['stockpile-minus',-1],['stockpile-plus',1]])$(id).onclick=()=>{state.stockpile=Math.trunc(E.bounded(state.stockpile+step,0,99));render(true);};
+      }
     }
   }
   function bindNumber(id,set,min,max){
@@ -68,7 +75,7 @@ globalThis.startBearApp=() => {
     el.addEventListener('blur',()=>{el.removeAttribute('aria-invalid');render(true);});
   }
   function setValue(id,value,force=false){const el=$(id);if(force||document.activeElement!==el)el.value=value;}
-  function config(){const a=stats('atk'),d=stats('def');return {...state,attack:a[1],defense:d[3],types:E.pets[state.def.pet].types,maxHP:d[0],currentHP:state.currentHP===null?d[0]:Math.min(d[0],state.currentHP)};}
+  function config(){const a=stats('atk'),d=stats('def'),pet=E.pets[state.def.pet];return {...state,stockpile:pet.trait==='囤积'?state.stockpile:0,attack:a[1],defense:d[3],types:pet.types,maxHP:d[0],currentHP:state.currentHP===null?d[0]:Math.min(d[0],state.currentHP)};}
   function render(force=false){
     for(const side of ['atk','def'])stats(side).forEach((x,i)=>{
       $(`${side}-actual-${i}`).textContent=x;$(`${side}-iv-${i}`).textContent=state[side].ivs[i];
@@ -89,6 +96,13 @@ globalThis.startBearApp=() => {
       $(key+'-range').setAttribute('aria-valuetext',`${state[key]} 层，${effect}${key==='powerLevel'?'点威力':'%'}`);
     }
     $('ability-summary').textContent=`能力倍率 ×${Number(r.ability.toFixed(4))} · 先发制人结算威力 ${r.skillPower}`;
+    if($('stockpile')){
+      setValue('stockpile',state.stockpile,force);$('stockpile-range').value=state.stockpile;
+      $('stockpile-range').style.setProperty('--stockpile-fill',state.stockpile/99*100+'%');
+      $('stockpile-range').classList.toggle('has-level',state.stockpile!==0);
+      $('stockpile-range').setAttribute('aria-valuetext',`${state.stockpile} 层，双防 +${state.stockpile*10}%`);
+      $('stockpile-minus').disabled=state.stockpile===0;$('stockpile-plus').disabled=state.stockpile===99;
+    }
     setValue('current-hp',c.currentHP,force);$('current-hp').max=c.maxHP;
     const hpPercent=Math.ceil(c.currentHP*100/c.maxHP);
     $('current-hp-percent').textContent=hpPercent+'%';
@@ -118,7 +132,7 @@ globalThis.startBearApp=() => {
     $('needed-note').textContent=!alive?'目标当前生命为 0，请调整血量。':minimum===null?'在 0–20 层冻结范围内，未达到斩杀条件。':r.alreadyFrozen?'当前生命不高于冻结生命线，无需本次攻击即满足死亡条件。':minimum===0?'无需冻结，本体与已有星陨伤害已足够。':`还需 ${Math.max(0,minimum-state.freeze)} 层冻结`;
     const start=Math.max(0,Math.min(13,state.freeze-3));
     $('forecast').innerHTML=Array.from({length:8},(_,i)=>{const n=start+i,x=E.outcome(c,n);return `<button class="forecast-cell ${n===state.freeze?'active':''} ${x.killed?'lethal':''}" data-freeze="${n}" aria-label="应用 ${n} 层冻结，伤害 ${x.total}" aria-pressed="${n===state.freeze}"><span class="layer">${n} 层冻结</span><strong>${x.total}</strong><small>${x.alreadyFrozen?'冻结即击败':x.killed?'可击败':`${(x.total/c.maxHP*100).toFixed(1)}% 伤害`}</small><div class="mini-track"><i style="width:${Math.min(100,(x.total+x.frozenHP)/c.maxHP*100)}%"></i></div></button>`;}).join('');
-    $('formula').innerHTML=`<div class="formula-grid"><div><b>① 能力等级倍率</b>(1 + ${Math.max(state.atkLevel,0)/10} 我方物攻提升 + ${Math.max(-state.defLevel,0)/10} 敌方物防降低)<br>÷ (1 + ${Math.max(-state.atkLevel,0)/10} 我方物攻降低 + ${Math.max(state.defLevel,0)/10} 敌方物防提升)<br>= ${r.abilityNumerator} / ${r.abilityDenominator} ≈ ${Number(r.ability.toFixed(6))}</div><div><b>② 先发制人 · 普通系物理伤害</b>威力 = max(0, 55 × 1 应对倍率 + ${r.powerBonus}) = ${r.skillPower}<br>⌊ (${c.attack} ÷ ${c.defense}) × 37/41 × ${r.skillPower} × (${r.abilityNumerator}/${r.abilityDenominator})<br>× 1 本系 × ${r.mainEffect} 克制 × ${c.mainMult} 其他影响 × ${(100-c.reduction)/100} 减伤剩余 × 1 其他免伤 ⌋ = ${r.main} HP</div><div><b>③ 星陨印记 · 引爆伤害</b>n = min(99, ${state.freeze} 冻结 + ${state.marks} 已有) = ${r.layers}；印记威力 = ${r.power}<br>结算威力 = max(0, ${r.power} + ${r.powerBonus})${r.layers===0?"（零层不触发）":""} = ${r.starPower}<br>⌊ (${c.attack} ÷ ${c.defense}) × 37/41 × ${r.starPower} × (${r.abilityNumerator}/${r.abilityDenominator}) 能力等级 × ${r.starEffect} 克制 × ${c.starMult} 其他影响 × ${(100-c.reduction)/100} 减伤剩余 × 1 其他免伤 ⌋ = ${r.star} HP<br>不乘本系加成；零层印记不触发。</div><div><b>④ 冻结生命线与斩杀合计</b>⌊ ${c.maxHP} × ${state.freeze} / 20 ⌋ = ${r.frozenHP} HP<br>攻击后生命 ≤ 冻结生命线 → 击败<br>斩杀线 = ${r.main} 先发 + ${r.star} 星陨 + ${r.frozenHP} 冻结 = ${r.executionLine} HP。</div></div>`;
+    $('formula').innerHTML=`<div class="formula-grid"><div><b>① 能力等级倍率</b>(1 + ${Math.max(state.atkLevel,0)/10} 我方物攻提升 + ${Math.max(-state.defLevel,0)/10} 敌方物防降低)<br>÷ (1 + ${Math.max(-state.atkLevel,0)/10} 我方物攻降低 + ${Math.max(state.defLevel,0)/10} 敌方物防提升 + ${r.stockpile/10} 囤积双防提升)<br>= ${r.abilityNumerator} / ${r.abilityDenominator} ≈ ${Number(r.ability.toFixed(6))}</div><div><b>② 先发制人 · 普通系物理伤害</b>威力 = max(0, 55 × 1 应对倍率 + ${r.powerBonus}) = ${r.skillPower}<br>⌊ (${c.attack} ÷ ${c.defense}) × 37/41 × ${r.skillPower} × (${r.abilityNumerator}/${r.abilityDenominator})<br>× 1 本系 × ${r.mainEffect} 克制 × ${c.mainMult} 其他影响 × ${(100-c.reduction)/100} 减伤剩余 × 1 其他免伤 ⌋ = ${r.main} HP</div><div><b>③ 星陨印记 · 引爆伤害</b>n = min(99, ${state.freeze} 冻结 + ${state.marks} 已有) = ${r.layers}；印记威力 = ${r.power}<br>结算威力 = max(0, ${r.power} + ${r.powerBonus})${r.layers===0?"（零层不触发）":""} = ${r.starPower}<br>⌊ (${c.attack} ÷ ${c.defense}) × 37/41 × ${r.starPower} × (${r.abilityNumerator}/${r.abilityDenominator}) 能力等级 × ${r.starEffect} 克制 × ${c.starMult} 其他影响 × ${(100-c.reduction)/100} 减伤剩余 × 1 其他免伤 ⌋ = ${r.star} HP<br>不乘本系加成；零层印记不触发。</div><div><b>④ 冻结生命线与斩杀合计</b>⌊ ${c.maxHP} × ${state.freeze} / 20 ⌋ = ${r.frozenHP} HP<br>攻击后生命 ≤ 冻结生命线 → 击败<br>斩杀线 = ${r.main} 先发 + ${r.star} 星陨 + ${r.frozenHP} 冻结 = ${r.executionLine} HP。</div></div>`;
   }
   function mount(){card('atk');card('def');render(true);}
   try{localStorage.removeItem('crescent-bear-v2');localStorage.removeItem('crescent-bear-v1');}catch{}
