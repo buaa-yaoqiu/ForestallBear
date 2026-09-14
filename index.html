@@ -8,9 +8,9 @@
 <body>
 <div class="ambient" aria-hidden="true"></div>
 <div class="shell"><section id="remote-loading"><p id="remote-status">正在连接远程图鉴…</p><button id="load-retry" hidden>重新加载</button></section><div id="app-content" hidden>
-  <header class="topbar"><a class="brand" href="#"><img id="brand-logo" class="brand-logo" alt="先发拿下"> 月牙实验室 <span class="divider">/</span> <span class="muted">洛克王国世界</span></a><span class="offline"><i></i> 联网图鉴 · 0.8</span></header>
+  <header class="topbar"><a class="brand" href="#"><img id="brand-logo" class="brand-logo" alt="先发拿下"> 雪熊剧组</a></header>
   <section class="hero">
-    <div><div class="eyebrow">CRESCENT BEAR / DAMAGE LAB</div><h1>这一击，<span>刚好落幕</span></h1><p>月牙雪熊 · 先发制人斩杀线计算器</p><div class="hero-tags"><span>普通系 · 55 威力</span><span>先手 +1</span><span>冻结 → 星陨</span></div></div>
+    <div><h1>这一击，<span>刚好落幕</span></h1><p>月牙雪熊 · 先发制人斩杀线计算器</p><div class="hero-tags"><span>普通系 · 55 威力</span><span>先手 +1</span><span>冻结 → 星陨</span></div></div>
     <div class="hero-art" aria-hidden="true"><div class="orbit"></div><span class="spark s1">✦</span><span class="spark s2">✧</span><img id="hero-bear" alt=""><span class="art-label">月牙雪熊 <small>NO.322</small></span></div>
   </section>
   <div class="workspace-heading"><div><span class="eyebrow">01 / BATTLE SETUP</span><h2>配置对战</h2></div><div class="toolbar"><button id="export">导出</button><button id="import">导入</button><button id="reset" class="quiet">重置</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div>
@@ -36,14 +36,14 @@
       <div class="eyebrow">02 / EXECUTION LINE</div><div class="result-title"><h2>斩杀线</h2><span id="status" role="status"></span></div>
       <div class="execution-hero"><div class="total"><span id="total">—</span><small>HP</small></div><img id="reaction-image" alt="" class="reaction-image"></div>
       <div class="hp-heading"><span>目标当前生命</span><b id="hp-label"></b></div><div class="hp-track" id="hp-bar" role="img" aria-label="生命分段预览"><div id="hp-frozen"></div><div id="hp-red"></div><div id="hp-star"><span class="star-particle" aria-hidden="true">✦</span><span class="star-particle" aria-hidden="true">✧</span><span class="star-particle" aria-hidden="true">✦</span><span class="star-particle" aria-hidden="true">✧</span><span class="star-particle" aria-hidden="true">✦</span></div><div id="hp-main"></div><div id="hp-empty"></div></div><div class="hp-legend"><span><i class="ice"></i>冻结</span><span><i class="red"></i>剩余</span><span><i class="purple"></i>星陨</span><span><i class="gray"></i>先发</span><span><i class="empty"></i>已掉</span></div><p id="freeze-hp-note" class="field-note"></p><div id="remaining" class="hp-outcome" aria-live="polite"></div>
-      <div class="damage-parts"><div><span>先发制人 <small>普通系</small></span><strong id="main-damage"></strong></div><div><span>星陨印记 <small>幻系</small></span><strong id="star-damage"></strong></div><div><span>冻结血量 <small>向下取整</small></span><strong id="frozen-damage"></strong></div></div>
+      <div class="damage-parts"><div><span>先发制人 <small>普通系</small></span><strong id="main-damage"></strong></div><div><span>星陨印记 <small>幻系</small></span><strong id="star-damage"></strong></div><div><span>冻结血量</span><strong id="frozen-damage"></strong></div></div>
       <div class="threshold"><span>击败当前目标所需冻结</span><div><strong id="needed">—</strong><span id="needed-unit">层</span></div><p id="needed-note"></p></div>
       
     </aside>
   </main>
   <section class="panel forecast"><div class="section-title"><div><span class="eyebrow">03 / FREEZE FORECAST</span></div><span class="muted small">点击层数即可应用</span></div><div id="forecast" class="forecast-grid"></div></section>
   <details class="panel methodology"><summary>计算过程与数据来源 <span>查看当前公式、模型边界与版本</span></summary><div id="formula"></div><p>图鉴与头像从远程仓库按需加载，不保存在本地存储中。萌化每次退回已核实的上一阶种族值，保留原属性与特性；除厄恢复原状。未核实进化链会禁用萌化。</p><p>冻结血量按总量向下取整、生命≤冻结线判死；此取整与等号边界尚待实测。能力倍率与伤害计算按用户提供规则，特性暂仅展示。资料来源：<a href="https://lovepvp.top">lovepvp</a> 与 <a href="https://wiki.biligame.com/nrc">BWIKI</a>，WIKI内容遵循CC BY-NC-SA 4.0。</p></details>
-  <footer><span>☾ 月牙实验室 <span class="muted"> / 为下一次漂亮的收尾。</span></span><span>远程数据 · 按需加载 · 不持久缓存</span></footer>
+  <footer><span>为下一次更有脑的先发制人</span></footer>
 </div></div><div id="toast" role="status"></div>
 <script src="assets.js"></script><script src="engine.js"></script><script src="app.js"></script><script src="bootstrap.js"></script>
 </body></html>
