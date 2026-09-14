@@ -6,7 +6,13 @@
 
 ## 首次准备
 
-需要 Python 3.10+、Git，以及已登录的 GitHub 凭据。**无需安装第三方 Python 包、Playwright 或浏览器驱动。** Windows 包装脚本会查找 `py`、`python`，最后尝试当前电脑已有的 Codex Python 运行时。
+需要 Python 3.10+、Git，以及已登录的 GitHub 凭据。只需安装锁定版本的拼音库，不需要 Playwright 或浏览器驱动：
+
+```powershell
+py -3 -m pip install -r requirements-maintenance.txt
+```
+
+Windows 包装脚本会查找 `py`、`python`，最后尝试当前电脑已有的 Codex Python 运行时。
 
 在项目目录打开 PowerShell：
 
@@ -48,6 +54,15 @@ cd D:\Coding\ForestallBear
 ```
 
 `--refresh-images` 必须指定名称，防止意外重传所有图片。新增精灵或头像来源发生变化时自动上传 PNG，其他条目保留现有头像。脚本不压缩新增 PNG；原图可能比原有 WebP 大，但只会在选中该精灵时加载。WIKI 未收录或字段缺失的精灵不会凭空创建，也不从其他站点补齐；请先完善 WIKI 资料。
+
+每次添加或更新精灵时，维护脚本会自动生成 `pinyin`（连续全拼）和 `initials`（拼音首字母）。生成前会删除名称中的所有非中文字符，例如 `权杖-V` 按“权杖”生成 `quanzhang` / `qz`。要检查或一次性补齐整个远程图鉴：
+
+```powershell
+./add-pinyin.ps1
+./add-pinyin.ps1 --publish
+```
+
+该脚本只在内存中处理远程 `pets.json`，同步生成 `pets.js`，不会把图鉴保存到本地；默认同样只预览。
 
 ## 2. 自动补充进化链
 

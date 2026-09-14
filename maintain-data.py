@@ -16,6 +16,8 @@ import urllib.request
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 
+from pinyin_index import INDEX_METADATA, add_search_keys
+
 REPO = 'buaa-yaoqiu/ForestallBear'
 TYPES = {'普通','草','火','水','光','地','冰','龙','电','毒','虫','武','翼','萌','幽','恶','机械','幻'}
 
@@ -353,6 +355,7 @@ def merge_catalog(old, incoming, selected):
     slots = {p['name']: i for i, p in enumerate(result['pets'])}
     additions, updates = [], []
     for pet in incoming:
+        pet = add_search_keys(pet)
         if selected and pet['name'] not in selected:
             continue
         if pet['name'] in slots:
@@ -366,7 +369,8 @@ def merge_catalog(old, incoming, selected):
             additions.append(pet['name'])
     # Preserve removed/missing source records and every existing index for saved configs.
     if additions or updates:
-        result.update(count=len(result['pets']), source='https://wiki.biligame.com/nrc', retrievedAt=datetime.now(timezone.utc).isoformat())
+        result.update(count=len(result['pets']), source='https://wiki.biligame.com/nrc',
+                      retrievedAt=datetime.now(timezone.utc).isoformat(), searchIndex=INDEX_METADATA)
     return result, additions, updates
 
 
@@ -519,6 +523,6 @@ if __name__ == '__main__':
     sys.stderr.reconfigure(encoding='utf-8')
     try:
         raise SystemExit(main())
-    except (RemoteError, KeyError, ValueError, OSError) as error:
+    except (RemoteError, KeyError, RuntimeError, ValueError, OSError) as error:
         print('停止：' + str(error), file=sys.stderr)
         raise SystemExit(1)

@@ -4,15 +4,15 @@ $ErrorActionPreference = 'Stop'
 $scriptFile = Join-Path $PSScriptRoot 'maintain-data.py'
 if (Get-Command py -ErrorAction SilentlyContinue) {
     $pythonCommand = 'py'
-    $pythonArgs = @('-3')
+    $pythonArgs = @('-3', '-B')
 } elseif (Get-Command python -ErrorAction SilentlyContinue) {
     $pythonCommand = 'python'
-    $pythonArgs = @()
+    $pythonArgs = @('-B')
 } else {
     $bundledPython = Join-Path $env:USERPROFILE '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
     if (-not (Test-Path -LiteralPath $bundledPython)) { throw 'Install Python 3.10+ and run this script again.' }
     $pythonCommand = $bundledPython
-    $pythonArgs = @()
+    $pythonArgs = @('-B')
 }
 if ($MyInvocation.ExpectingInput) {
     $previousOutputEncoding = $OutputEncoding
