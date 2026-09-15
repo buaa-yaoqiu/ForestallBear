@@ -27,6 +27,8 @@
 @media(max-width:1150px){.iv-stepper{width:55px}.stats-table output.actual{width:57px}}
 @media(max-width:600px){.iv-stepper{width:72px}.iv-stepper button{width:24px;height:20px;font-size:13px;line-height:18px}.stats-table output.actual{width:78px}.hp-track{height:22px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}.hp-track #hp-frozen:after{animation:none;transform:translateX(0)}}
+/* Special trait trigger control. */
+.special-toggle{display:flex;align-items:center;gap:8px;margin-top:12px;color:#cbbcff}.special-toggle input{width:16px;height:16px}
 </style>
 </head>
 <body>
@@ -108,9 +110,10 @@
     const reduction=(100-bounded(c.reduction,0,100))/100;
     const atkLevel=Math.trunc(bounded(c.atkLevel,-99,99,0)),defLevel=Math.trunc(bounded(c.defLevel,-99,99,0));
     const stockpile=Math.trunc(bounded(c.stockpile,0,99,0));
+    const traitAttackPct=bounded(c.traitAttackPct,0,99,0),traitDefensePct=bounded(c.traitDefensePct,0,99,0);
     const powerLevel=Math.trunc(bounded(c.powerLevel,-99,99,0));
-    const abilityNumerator=10+Math.max(atkLevel,0)+Math.max(-defLevel,0);
-    const abilityDenominator=10+Math.max(-atkLevel,0)+Math.max(defLevel,0)+stockpile;
+    const abilityNumerator=10+Math.max(atkLevel,0)+Math.max(-defLevel,0)+traitAttackPct*10;
+    const abilityDenominator=10+Math.max(-atkLevel,0)+Math.max(defLevel,0)+stockpile+traitDefensePct*10;
     const ability=abilityNumerator/abilityDenominator;
     // First Strike has no response power bonus and is not STAB on Crescent Bear.
     const responseMult=1,stab=1,powerBonus=powerLevel*10;
@@ -119,7 +122,7 @@
     const main=Math.floor(ratio*skillPower*ability*stab*mainEffect*bounded(c.mainMult,0,10,1)*reduction);
     const starPower=layers>0?Math.max(0,power+powerBonus):0;
     const star=Math.floor(ratio*starPower*ability*starEffect*bounded(c.starMult,0,10,1)*reduction);
-    return {main,star,total:main+star,layers,power,starPower,mainEffect,starEffect,ratio,ability,abilityNumerator,abilityDenominator,stockpile,skillPower,powerBonus,responseMult,stab};
+    return {main,star,total:main+star,layers,power,starPower,mainEffect,starEffect,ratio,ability,abilityNumerator,abilityDenominator,stockpile,traitAttackPct,traitDefensePct,skillPower,powerBonus,responseMult,stab};
   }
   function minimumFreeze(c) {
     if(c.currentHP<=0)return null;
@@ -150,7 +153,14 @@
 globalThis.startBearApp=() => {
   'use strict';
   const E=BearEngine,$=id=>document.getElementById(id),assets=globalThis.BEAR_ASSETS||{};
-  const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},morphPath:[],freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,stockpile:0,survive:false,currentHP:null});
+  const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},morphPath:[],freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,specialLevel:0,specialEnabled:false,stockpile:0,survive:false,currentHP:null});
+  const starTraits=new Set(['保守派','偏振','完全偏振','渗透','游弋','构装契约者','张弛有度','狂欢开始','展翅','铭记于月亮']);
+  const specialSpecs={
+    '最好的伙伴':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'裁决':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'滋养':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'点燃':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'净化':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},
+    '虫群鼓舞':{text:'每只其他虫系精灵，入场时攻防速 +10%',attack:.1,defense:.1},'虫群突袭':{text:'每只其他虫系精灵，入场时攻防速 +15%',attack:.15,defense:.15},'鼓气':{text:'触发后双攻和双防 +20%',attack:.2,defense:.2},'三鼓作气':{text:'触发后双攻和双防永久 +20%',attack:.2,defense:.2},'合拍':{text:'每个相同项目，物攻和物防永久 +10%',attack:.1,defense:.1},'淬炼火':{text:'每次火系技能，攻防 +10%（最多10次）',attack:.1,defense:.1,max:10},'守护之心':{text:'每种场上增益，物防 +20%',defense:.2},'宇宙之眼':{text:'每层星陨印记，物防 +10%',defense:.1},'蒸汽革命':{text:'每次火系技能，物防 +5%',defense:.05},'囤积':{text:'每有1能量，双防 +10%',defense:.1}
+  };
+  const deferredTraits=new Set(['绝对秩序','狂欢开始','铭记于月亮']);
+  const specialSpec=p=>specialSpecs[p?.trait]||(starTraits.has(p?.trait)?{text:'一星特性，条件触发暂由开关控制'}:null);
   let state=initial(),timer;
   const num=(n,max=100,min=0)=>E.bounded(n,min,max);
   const natureOf=v=>typeof v.nature==='object'?v.nature:E.natures[v.nature]||E.natures['无修正'];
@@ -170,6 +180,7 @@ globalThis.startBearApp=() => {
     out.reduction=num(s.reduction);for(const k of ['mainMult','starMult'])out[k]=E.bounded(s[k],0,10,1);
     for(const k of ['atkLevel','defLevel','powerLevel'])out[k]=Math.trunc(E.bounded(s[k],-99,99,0));
     out.stockpile=Math.trunc(E.bounded(s.stockpile,0,99,0));
+    out.specialLevel=Math.trunc(E.bounded(s.specialLevel,0,99,0));out.specialEnabled=s.specialEnabled===true;
     out.survive=s.survive===true;out.currentHP=s.currentHP===null?null:Math.round(num(s.currentHP,99999));return out;
   }
   function statPet(side){return side==='def'&&state.morphPath.length?E.pets.find(p=>p.name===state.morphPath.at(-1)):E.pets[state[side].pet];}
@@ -178,7 +189,8 @@ globalThis.startBearApp=() => {
   function card(side){
     const v=state[side],p=E.pets[v.pet],shown=statPet(side),atk=side==='atk',title=atk?'攻击方':'防御方';
     const hasStockpile=!atk&&p.trait==='囤积';
-    $(atk?'attacker':'defender').innerHTML=`<div class="card-heading"><span class="side-label">${atk?'ATTACKER / 攻击方':'DEFENDER / 防御方'}</span><small>${atk?'固定精灵':E.pets.length+' 个精灵／形态'}</small></div><select id="${side}-pet" class="pet-select" aria-label="${title}精灵">${E.pets.map((p,i)=>!atk||i===0?`<option value="${i}" ${i===v.pet?'selected':''}>${p.name}</option>`:'').join('')}</select><div class="pet-banner"><div class="portrait-wrap"><img data-pet-portrait="${shown.name}" alt="${p.name}">${!atk&&state.morphPath.length?'<span class="morph-heart" aria-label="已萌化">♥</span>':''}</div><div class="pet-meta"><div class="type-badges">${p.types.map(t=>`<span>${t}系</span>`).join('')}</div><div class="trait">种族总和 <b>${shown.stats.reduce((a,b)=>a+b,0)}</b></div></div></div><table class="stats-table"><thead><tr><th>能力</th><th>种族</th><th>个体</th><th class="nature-col">增益</th><th class="nature-col">减益</th><th>面板</th></tr></thead><tbody>${E.keys.map((k,i)=>`<tr><td><span class="stat-label">${E.labels[i]}</span></td><td>${shown.stats[i]}</td><td><div class="iv-stepper"><output id="${side}-iv-${i}" aria-label="${title}${E.labels[i]}个体值">${v.ivs[i]}</output><div><button id="${side}-iv-up-${i}" aria-label="增加${title}${E.labels[i]}个体值">▴</button><button id="${side}-iv-down-${i}" aria-label="减少${title}${E.labels[i]}个体值">▾</button></div></div></td><td class="nature-col"><button class="nature-choice up" id="${side}-nature-up-${i}" aria-label="${title}${E.labels[i]}性格增益" aria-pressed="false">↑</button></td><td class="nature-col"><button class="nature-choice down" id="${side}-nature-down-${i}" aria-label="${title}${E.labels[i]}性格减益" aria-pressed="false">↓</button></td><td><output id="${side}-actual-${i}" class="actual" aria-label="${title}${E.labels[i]}实际面板"></output></td></tr>`).join('')}</tbody></table><div class="stat-foot"><span>个体 0 / 42 / 48 / 54 / 60 · 面板自动计算</span></div>${atk?'<section class="bear-trait"><div class="trait-top"><span class="trait-symbol">✦</span><div><small>精灵特性</small><h3>月牙雪糕</h3></div><span class="trait-auto">自动生效</span></div><p>使用攻击技能时，目标每有 1 层冻结，在攻击前使其获得 1 层星陨印记。</p><div class="trait-chain"><span>❄ 冻结</span><b>→</b><span>✧ 星陨印记</span></div></section>':`<section class="defender-trait ${hasStockpile?'active-trait':''}"><div class="trait-top"><span class="trait-symbol">◇</span><div><small>精灵特性</small><h3>${p.trait}</h3></div><span class="trait-default">${hasStockpile?'已计入':'无效果'}</span></div>${hasStockpile?'<p>每有 1 层能量，双防提高 10%</p><div class="stockpile-control"><div class="stockpile-heading"><label for="stockpile">囤积能量 <span>层</span></label><div class="stockpile-stepper"><button id="stockpile-minus" aria-label="减少一层囤积能量">−</button><input id="stockpile" type="number" min="0" max="99" step="1"><button id="stockpile-plus" aria-label="增加一层囤积能量">＋</button></div></div><input id="stockpile-range" aria-label="囤积能量拖条" type="range" min="0" max="99" step="1"><div class="range-labels"><span>0</span><span>99 层</span></div></div>':''}</section><div class="hp-control"><label for="current-hp">当前生命</label><input id="current-hp" type="number" min="0" step="1"><button id="full-hp">满血</button></div>`}`;
+    $(atk?'attacker':'defender').innerHTML=`<div class="card-heading"><span class="side-label">${atk?'ATTACKER / 攻击方':'DEFENDER / 防御方'}</span><small>${atk?'固定精灵':E.pets.length+' 个精灵／形态'}</small></div><select id="${side}-pet" class="pet-select" aria-label="${title}精灵">${E.pets.map((p,i)=>!atk||i===0?`<option value="${i}" ${i===v.pet?'selected':''}>${p.name}</option>`:'').join('')}</select><div class="pet-banner"><div class="portrait-wrap"><img data-pet-portrait="${shown.name}" alt="${p.name}">${!atk&&state.morphPath.length?'<span class="morph-heart" aria-label="已萌化">♥</span>':''}</div><div class="pet-meta"><div class="type-badges">${p.types.map(t=>`<span>${t}系</span>`).join('')}</div><div class="trait">种族总和 <b>${shown.stats.reduce((a,b)=>a+b,0)}</b></div></div></div><table class="stats-table"><thead><tr><th>能力</th><th>种族</th><th>个体</th><th class="nature-col">增益</th><th class="nature-col">减益</th><th>面板</th></tr></thead><tbody>${E.keys.map((k,i)=>`<tr><td><span class="stat-label">${E.labels[i]}</span></td><td>${shown.stats[i]}</td><td><div class="iv-stepper"><output id="${side}-iv-${i}" aria-label="${title}${E.labels[i]}个体值">${v.ivs[i]}</output><div><button id="${side}-iv-up-${i}" aria-label="增加${title}${E.labels[i]}个体值">▴</button><button id="${side}-iv-down-${i}" aria-label="减少${title}${E.labels[i]}个体值">▾</button></div></div></td><td class="nature-col"><button class="nature-choice up" id="${side}-nature-up-${i}" aria-label="${title}${E.labels[i]}性格增益" aria-pressed="false">↑</button></td><td class="nature-col"><button class="nature-choice down" id="${side}-nature-down-${i}" aria-label="${title}${E.labels[i]}性格减益" aria-pressed="false">↓</button></td><td><output id="${side}-actual-${i}" class="actual" aria-label="${title}${E.labels[i]}实际面板"></output></td></tr>`).join('')}</tbody></table><div class="stat-foot"><span>个体 0 / 42 / 48 / 54 / 60 · 面板自动计算</span></div>${atk?'<section class="bear-trait"><div class="trait-top"><span class="trait-symbol">✦</span><div><small>精灵特性</small><h3>月牙雪糕</h3></div><span class="trait-auto">自动生效</span></div><p>使用攻击技能时，目标每有 1 层冻结，在攻击前使其获得 1 层星陨印记。</p><div class="trait-chain"><span>❄ 冻结</span><b>→</b><span>✧ 星陨印记</span></div></section>':`<section class="defender-trait ${hasStockpile?'active-trait':''}"><div class="trait-top"><span class="trait-symbol">◇</span><div><small>精灵特性</small><h3>${p.trait}</h3></div><span class="trait-default">${hasStockpile?'已计入':deferredTraits.has(p.trait)?'二/三星暂未接入':'无效果'}</span></div>${hasStockpile?'<p>每有 1 层能量，双防提高 10%</p><div class="stockpile-control"><div class="stockpile-heading"><label for="stockpile">囤积能量 <span>层</span></label><div class="stockpile-stepper"><button id="stockpile-minus" aria-label="减少一层囤积能量">−</button><input id="stockpile" type="number" min="0" max="99" step="1"><button id="stockpile-plus" aria-label="增加一层囤积能量">＋</button></div></div><input id="stockpile-range" aria-label="囤积能量拖条" type="range" min="0" max="99" step="1"><div class="range-labels"><span>0</span><span>99 层</span></div></div>':''}</section><div class="hp-control"><label for="current-hp">当前生命</label><input id="current-hp" type="number" min="0" step="1"><button id="full-hp">满血</button></div>`}`;
+    if(!atk){const spec=specialSpec(p),traitCard=$("defender").querySelector('.defender-trait');if(spec&&p.trait!=='囤积'&&traitCard){const star=starTraits.has(p.trait),max=spec.max||99;traitCard.remove();const panel=document.createElement('section');panel.className='defender-trait active-trait';panel.innerHTML=`<div class="trait-top"><span class="trait-symbol">◇</span><div><small>精灵特性</small><h3>${p.trait}</h3></div><span class="trait-default">${star?'一星特性':'可叠加'}</span></div><p>${spec.text}</p>${star?'<label class="special-toggle"><input id="special-enabled" type="checkbox"> 触发特性</label>':`<div class="stockpile-control"><div class="stockpile-heading"><label for="special-level">特性层数 <span>0–${max} 层</span></label><div class="stockpile-stepper"><button id="special-minus" aria-label="减少一层特性层数">−</button><input id="special-level" type="number" min="0" max="${max}" step="1"><button id="special-plus" aria-label="增加一层特性层数">＋</button></div></div><input id="special-range" aria-label="特性层数拖条" type="range" min="0" max="${max}" step="1"><div class="range-labels"><span>0</span><span>${max} 层</span></div></div>`}`;$("defender").querySelector('.hp-control').before(panel);}}
     document.querySelectorAll('[data-pet-portrait]').forEach(img=>globalThis.loadPetPortrait(img,img.dataset.petPortrait));
     if(!atk){
       $('def-pet').insertAdjacentHTML('beforebegin','<input id="pet-search" type="search" placeholder="搜索名称、拼音、首字母、属性或特性" aria-label="搜索目标精灵"><p id="pet-search-count" class="field-note"></p>');
@@ -214,6 +226,7 @@ globalThis.startBearApp=() => {
         $('stockpile-range').oninput=e=>{state.stockpile=Number(e.target.value);render();};
         for(const [id,step] of [['stockpile-minus',-1],['stockpile-plus',1]])$(id).onclick=()=>{state.stockpile=Math.trunc(E.bounded(state.stockpile+step,0,99));render(true);};
       }
+      const spec=specialSpec(p);if(spec&&p.trait!=='囤积'){const max=spec.max||99;if(starTraits.has(p.trait))$('special-enabled').onchange=e=>{state.specialEnabled=e.target.checked;render();};else{bindNumber('special-level',x=>{state.specialLevel=Math.trunc(x);},0,max);$('special-range').oninput=e=>{state.specialLevel=Number(e.target.value);render();};for(const [id,step] of [['special-minus',-1],['special-plus',1]])$(id).onclick=()=>{state.specialLevel=Math.trunc(E.bounded(state.specialLevel+step,0,max));render(true);};}}
     }
   }
   function bindNumber(id,set,min,max){
@@ -223,7 +236,7 @@ globalThis.startBearApp=() => {
     el.addEventListener('blur',()=>{el.removeAttribute('aria-invalid');render(true);});
   }
   function setValue(id,value,force=false){const el=$(id);if(force||document.activeElement!==el)el.value=value;}
-  function config(){const a=stats('atk'),d=stats('def'),pet=E.pets[state.def.pet];return {...state,stockpile:pet.trait==='囤积'?state.stockpile:0,attack:a[1],defense:d[3],types:pet.types,maxHP:d[0],currentHP:state.currentHP===null?d[0]:Math.min(d[0],state.currentHP)};}
+  function config(){const a=stats('atk'),d=stats('def'),pet=E.pets[state.def.pet],spec=specialSpec(pet),star=starTraits.has(pet.trait),level=spec&&pet.trait!=='囤积'?(star?(state.specialEnabled?1:0):state.specialLevel):0;return {...state,stockpile:pet.trait==='囤积'?state.stockpile:0,traitAttackPct:spec?.attack?spec.attack*level:0,traitDefensePct:spec?.defense?spec.defense*level:0,attack:a[1],defense:d[3],types:pet.types,maxHP:d[0],currentHP:state.currentHP===null?d[0]:Math.min(d[0],state.currentHP)};}
   function render(force=false){
     for(const side of ['atk','def'])stats(side).forEach((x,i)=>{
       $(`${side}-actual-${i}`).textContent=x;$(`${side}-iv-${i}`).textContent=state[side].ivs[i];
@@ -251,6 +264,8 @@ globalThis.startBearApp=() => {
       $('stockpile-range').setAttribute('aria-valuetext',`${state.stockpile} 层，双防 +${state.stockpile*10}%`);
       $('stockpile-minus').disabled=state.stockpile===0;$('stockpile-plus').disabled=state.stockpile===99;
     }
+    if($('special-level')){const max=Number($('special-range').max||99);setValue('special-level',state.specialLevel,force);$('special-range').value=state.specialLevel;$('special-range').style.setProperty('--stockpile-fill',state.specialLevel/max*100+'%');$('special-range').classList.toggle('has-level',state.specialLevel!==0);$('special-minus').disabled=state.specialLevel===0;$('special-plus').disabled=state.specialLevel===max;}
+    if($('special-enabled'))$('special-enabled').checked=state.specialEnabled;
     setValue('current-hp',c.currentHP,force);$('current-hp').max=c.maxHP;
     const hpPercent=Math.ceil(c.currentHP*100/c.maxHP);
     $('current-hp-percent').textContent=hpPercent+'%';

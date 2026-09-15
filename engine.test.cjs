@@ -12,6 +12,8 @@ assert.equal(E.damage({...c,stockpile:1}).ability,1/1.1);
 assert.equal(E.damage({...c,defLevel:3,stockpile:4}).ability,10/17);
 assert.equal(E.damage({...c,defLevel:-3,stockpile:4}).ability,13/14);
 assert.equal(E.damage({...c,stockpile:100}).stockpile,99);
+assert.equal(E.damage({...c,traitAttackPct:.2}).ability,1.2);
+assert.equal(E.damage({...c,traitDefensePct:.2}).ability,1/1.2);
 assert.equal(E.damage({...c,freeze:5,attack:400}).star,218);
 assert.equal(E.damage({...c,freeze:5,defense:400}).star,54);
 assert.equal(E.damage({...c,freeze:5,powerLevel:2}).star,127);

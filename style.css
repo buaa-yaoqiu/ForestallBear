@@ -22,3 +22,5 @@
 @media(max-width:1150px){.iv-stepper{width:55px}.stats-table output.actual{width:57px}}
 @media(max-width:600px){.iv-stepper{width:72px}.iv-stepper button{width:24px;height:20px;font-size:13px;line-height:18px}.stats-table output.actual{width:78px}.hp-track{height:22px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}.hp-track #hp-frozen:after{animation:none;transform:translateX(0)}}
+/* Special trait trigger control. */
+.special-toggle{display:flex;align-items:center;gap:8px;margin-top:12px;color:#cbbcff}.special-toggle input{width:16px;height:16px}
