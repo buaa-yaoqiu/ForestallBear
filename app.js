@@ -3,12 +3,12 @@ globalThis.startBearApp=() => {
   'use strict';
   const E=BearEngine,$=id=>document.getElementById(id),assets=globalThis.BEAR_ASSETS||{};
   const initial=()=>({version:2,atk:{pet:0,nature:'固执',ivs:[0,0,0,0,0,0]},def:{pet:1,nature:'无修正',ivs:[0,0,0,0,0,0]},morphPath:[],freeze:5,marks:0,reduction:0,mainMult:1,starMult:1,atkLevel:0,defLevel:0,powerLevel:0,specialLevel:0,specialEnabled:false,stockpile:0,survive:false,currentHP:null});
-  const starTraits=new Set(['保守派','偏振','完全偏振','渗透','游弋','构装契约者','张弛有度','狂欢开始','展翅','铭记于月亮']);
+  const starTraits=new Set(['保守派','游弋','构装契约者','张弛有度','展翅']);
   const specialSpecs={
     '最好的伙伴':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'裁决':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'滋养':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'点燃':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},'净化':{text:'造成克制伤害后，获得攻防速 +20%',attack:.2,defense:.2},
     '虫群鼓舞':{text:'每只其他虫系精灵，入场时攻防速 +10%',attack:.1,defense:.1},'虫群突袭':{text:'每只其他虫系精灵，入场时攻防速 +15%',attack:.15,defense:.15},'鼓气':{text:'触发后双攻和双防 +20%',attack:.2,defense:.2},'三鼓作气':{text:'触发后双攻和双防永久 +20%',attack:.2,defense:.2},'合拍':{text:'每个相同项目，物攻和物防永久 +10%',attack:.1,defense:.1},'淬炼火':{text:'每次火系技能，攻防 +10%（最多10次）',attack:.1,defense:.1,max:10},'守护之心':{text:'每种场上增益，物防 +20%',defense:.2},'宇宙之眼':{text:'每层星陨印记，物防 +10%',defense:.1},'蒸汽革命':{text:'每次火系技能，物防 +5%',defense:.05},'囤积':{text:'每有1能量，双防 +10%',defense:.1}
   };
-  const deferredTraits=new Set(['绝对秩序','狂欢开始','铭记于月亮']);
+  const deferredTraits=new Set(['偏振','完全偏振','渗透','绝对秩序','狂欢开始','铭记于月亮','狂欢开始']);
   const specialSpec=p=>specialSpecs[p?.trait]||(starTraits.has(p?.trait)?{text:'一星特性，条件触发暂由开关控制'}:null);
   let state=initial(),timer;
   const num=(n,max=100,min=0)=>E.bounded(n,min,max);
