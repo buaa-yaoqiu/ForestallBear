@@ -37,9 +37,9 @@
     const reduction=(100-bounded(c.reduction,0,100))/100;
     const atkLevel=Math.trunc(bounded(c.atkLevel,-99,99,0)),defLevel=Math.trunc(bounded(c.defLevel,-99,99,0));
     const stockpile=Math.trunc(bounded(c.stockpile,0,99,0));
-    const traitAttackPct=bounded(c.traitAttackPct,0,99,0),traitDefensePct=bounded(c.traitDefensePct,0,99,0);
+    const traitDefensePct=bounded(c.traitDefensePct,0,99,0);
     const powerLevel=Math.trunc(bounded(c.powerLevel,-99,99,0));
-    const abilityNumerator=10+Math.max(atkLevel,0)+Math.max(-defLevel,0)+traitAttackPct*10;
+    const abilityNumerator=10+Math.max(atkLevel,0)+Math.max(-defLevel,0);
     const abilityDenominator=10+Math.max(-atkLevel,0)+Math.max(defLevel,0)+stockpile+traitDefensePct*10;
     const ability=abilityNumerator/abilityDenominator;
     // First Strike has no response power bonus and is not STAB on Crescent Bear.
@@ -49,7 +49,7 @@
     const main=Math.floor(ratio*skillPower*ability*stab*mainEffect*bounded(c.mainMult,0,10,1)*reduction);
     const starPower=layers>0?Math.max(0,power+powerBonus):0;
     const star=Math.floor(ratio*starPower*ability*starEffect*bounded(c.starMult,0,10,1)*reduction);
-    return {main,star,total:main+star,layers,power,starPower,mainEffect,starEffect,ratio,ability,abilityNumerator,abilityDenominator,stockpile,traitAttackPct,traitDefensePct,skillPower,powerBonus,responseMult,stab};
+    return {main,star,total:main+star,layers,power,starPower,mainEffect,starEffect,ratio,ability,abilityNumerator,abilityDenominator,stockpile,traitDefensePct,skillPower,powerBonus,responseMult,stab};
   }
   function minimumFreeze(c) {
     if(c.currentHP<=0)return null;
